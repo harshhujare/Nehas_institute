@@ -1,0 +1,244 @@
+// This is the Prisma schema for AjitSir Academy
+// Source of truth for all database models
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ─────────────────────────────────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  SUPPORT_MANAGER
+  CONTENT_MANAGER
+  SUPER_ADMIN
+}
+
+enum Plan {
+  FREE
+  PAID
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+enum AnnouncementType {
+  IMAGE
+  VIDEO
+}
+
+enum NoteAccessType {
+  TIMED     // access expires with user's planExpiresAt
+  LIFETIME  // access granted forever once user has ever successfully paid
+}
+
+// ─── Models ────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String        @id @default(cuid())
+  name          String
+  email         String        @unique
+  passwordHash  String?
+  googleId      String?       @unique
+  role          Role          @default(STUDENT)
+  plan          Plan          @default(FREE)
+  planExpiresAt DateTime?
+  paidAt        DateTime?     // set once on first successful payment, never cleared
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  attempts       TestAttempt[]
+  payments       Payment[]
+  noteViews      NoteView[]
+  supportTickets SupportTicket[]
+  ticketReplies  TicketReply[]
+}
+
+model Subject {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  nameMarathi   String?        // Marathi translation of subject name
+  order         Int            @default(0)
+  tests         Test[]
+  notes         Note[]
+}
+
+model Test {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  subjectId   String
+  subject     Subject       @relation(fields: [subjectId], references: [id])
+  isPaid      Boolean       @default(false)
+  questions   Question[]
+  attempts    TestAttempt[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model Question {
+  id            String  @id @default(cuid())
+  testId        String
+  test          Test    @relation(fields: [testId], references: [id], onDelete: Cascade)
+  text          String
+  options       Json    // [{ id: "A", text: "..." }, ...]
+  correctOption String  // "A" | "B" | "C" | "D"
+  explanation   String?
+  order         Int
+}
+
+model TestAttempt {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  testId      String
+  test        Test     @relation(fields: [testId], references: [id])
+  answers     Json     // { questionId: selectedOption }
+  score       Int
+  totalMarks  Int
+  timeTaken   Int      // seconds
+  completedAt DateTime @default(now())
+}
+
+model Note {
+  id           String         @id @default(cuid())
+  title        String
+  description  String?
+  subjectId    String
+  subject      Subject        @relation(fields: [subjectId], references: [id])
+  fileKey      String         // AWS S3 object key — NEVER expose to client
+  isPaid       Boolean        @default(false)
+  accessType   NoteAccessType @default(TIMED) // TIMED = expires with plan; LIFETIME = permanent once paid
+  pageCount    Int?
+  thumbnailKey String?        // S3 key of thumbnail image (optional)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  views        NoteView[]
+
+  @@index([subjectId])
+}
+
+model NoteView {
+  id       String   @id @default(cuid())
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  noteId   String
+  note     Note     @relation(fields: [noteId], references: [id])
+  viewedAt DateTime @default(now())
+
+  @@index([noteId])
+  @@index([userId])
+}
+
+model Announcement {
+  id          String           @id @default(cuid())
+  title       String
+  description String?
+  type        AnnouncementType @default(IMAGE)
+  youtubeUrl  String?          // YouTube video URL (if type = VIDEO)
+  imageKey    String?          // S3 key for announcement image (optional)
+  isActive    Boolean          @default(true)
+  order       Int              @default(0)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model Payment {
+  id                String        @id @default(cuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  razorpayOrderId   String        @unique
+  razorpayPaymentId String?
+  amount            Int           // in paise (1 INR = 100 paise)
+  status            PaymentStatus @default(PENDING)
+  planDuration      Int           // days (e.g. 30, 180, 365)
+  createdAt         DateTime      @default(now())
+}
+
+// Stores admin-configurable pricing for each plan duration.
+// Supports multiple plans in future (one record per planDuration).
+// Currently only one active record: 30 days = ₹499.
+model PlanConfig {
+  id           String   @id @default(cuid())
+  planDuration Int      @unique  // days: 30 | 180 | 365
+  price        Int               // price in paise (e.g. 49900 = ₹499)
+  label        String            // display name (e.g. "Premium Access")
+  description  String?           // optional marketing copy shown on pricing page
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("plan_config")
+}
+// ─── Help Center & Support ───────────────────────────────────────────────────
+
+model FAQ {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  category  String
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([category])
+  @@index([isActive])
+}
+
+enum TicketType {
+  BUG_REPORT
+  PAYMENT_ISSUE
+  CONTENT_QUERY
+  GENERAL
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
+model SupportTicket {
+  id        String        @id @default(cuid())
+  type      TicketType
+  status    TicketStatus  @default(OPEN)
+  subject   String
+  message   String
+
+  paymentId String?
+  orderId   String?
+
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+  replies   TicketReply[]
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+}
+
+model TicketReply {
+  id           String        @id @default(cuid())
+  message      String
+  isStaffReply Boolean       @default(false)
+
+  ticketId     String
+  ticket       SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  authorId     String
+  author       User          @relation(fields: [authorId], references: [id])
+
+  createdAt    DateTime      @default(now())
+}
