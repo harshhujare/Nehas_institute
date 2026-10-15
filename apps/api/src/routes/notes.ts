@@ -3,7 +3,7 @@ import { prisma, withRetry } from '../lib/prisma';
 import { requireAuth, requireAdmin, requireSuperAdmin } from '../middleware/auth';
 import { upload } from '../middleware/upload';
 import { uploadFile, getFileStream, deleteFile } from '../services/storage';
-import { CreateNoteSchema } from '@ajitsir/shared';
+import { CreateNoteSchema } from '@neha/shared';
 import { asyncHandler } from '../lib/asyncHandler';
 import { randomUUID } from 'crypto';
 

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma, withRetry } from '../lib/prisma';
 import { requireAuth, requireSupport, requireSuperAdmin } from '../middleware/auth';
-import { CreateTicketSchema, ReplyTicketSchema } from '@ajitsir/shared';
+import { CreateTicketSchema, ReplyTicketSchema } from '@neha/shared';
 
 export const supportRouter = Router();
 

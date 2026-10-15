@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import useEmblaCarousel from 'embla-carousel-react';
 import Autoplay from 'embla-carousel-autoplay';
-import type { Announcement } from '@ajitsir/shared';
+import type { Announcement } from '@neha/shared';
 
 // ─── YouTube URL Parser ────────────────────────────────────────────────────────
 // Handles all YouTube URL formats:

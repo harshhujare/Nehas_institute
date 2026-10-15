@@ -4,7 +4,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import apiClient from '@/lib/api-client';
 import useAuthStore from '@/lib/auth-store';
-import type { User } from '@ajitsir/shared';
+import type { User } from '@neha/shared';
 
 declare global {
   interface Window {

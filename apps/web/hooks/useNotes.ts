@@ -1,6 +1,6 @@
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import apiClient from '../lib/api-client';
-import type { Note, Subject } from '@ajitsir/shared';
+import type { Note, Subject } from '@neha/shared';
 
 // The Notes returned by API include nested subject object
 export type NoteWithSubject = Note & { subject: Subject };

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../lib/api-client';
-import type { Subject } from '@ajitsir/shared';
+import type { Subject } from '@neha/shared';
 
 export function useSubjects() {
   return useQuery({

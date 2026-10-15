@@ -1,5 +1,5 @@
 import jwt, { type SignOptions } from 'jsonwebtoken';
-import type { JwtPayload } from '@ajitsir/shared';
+import type { JwtPayload } from '@neha/shared';
 
 const ACCESS_SECRET = process.env.JWT_SECRET!;
 const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET!;

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyAccessToken } from '../services/token';
 import { prisma } from '../lib/prisma';
-import type { Role, Plan, JwtPayload } from '@ajitsir/shared';
+import type { Role, Plan, JwtPayload } from '@neha/shared';
 
 // Extend Express Request to carry the authenticated user
 declare global {

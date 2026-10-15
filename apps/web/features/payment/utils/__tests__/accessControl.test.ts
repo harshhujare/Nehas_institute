@@ -1,5 +1,5 @@
 import { canAccessNote } from '../accessControl';
-import type { User } from '@ajitsir/shared';
+import type { User } from '@neha/shared';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 

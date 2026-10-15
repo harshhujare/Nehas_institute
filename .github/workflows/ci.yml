@@ -29,7 +29,7 @@ jobs:
         run: npx prisma generate
 
       - name: Build API (TypeScript compile)
-        run: npx turbo run build --filter=@ajitsir/api
+        run: npx turbo run build --filter=@neha/api
 
       - name: Build Web (Next.js + TypeScript)
         run: npx turbo run build --filter=web

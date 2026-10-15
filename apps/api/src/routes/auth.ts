@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import { isTransientDatabaseError, prisma, withRetry } from '../lib/prisma';
 import { signAccessToken, signRefreshToken, verifyAccessToken, verifyRefreshToken } from '../services/token';
 import { verifyGoogleIdToken } from '../services/google';
-import { RegisterSchema, LoginSchema, GoogleAuthSchema } from '@ajitsir/shared';
+import { RegisterSchema, LoginSchema, GoogleAuthSchema } from '@neha/shared';
 import { asyncHandler } from '../lib/asyncHandler';
 
 async function checkAndDowngradePlan<T extends { id: string; plan: string; planExpiresAt: Date | null }>(user: T): Promise<T> {

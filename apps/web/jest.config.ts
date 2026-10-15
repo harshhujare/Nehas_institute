@@ -5,7 +5,7 @@ const config: Config = {
   testEnvironment: 'node',
   moduleNameMapper: {
     // Map the shared package alias used in tests
-    '^@ajitsir/shared$': '<rootDir>/../../packages/shared/src/index.ts',
+    '^@neha/shared$': '<rootDir>/../../packages/shared/src/index.ts',
     // Map Next.js path aliases
     '^@/(.*)$': '<rootDir>/$1',
   },

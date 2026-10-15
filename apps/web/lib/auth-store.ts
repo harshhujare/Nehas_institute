@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { User } from '@ajitsir/shared';
+import type { User } from '@neha/shared';
 import apiClient, { isTransientAuthError } from './api-client';
 import { pdfCacheClearAll } from './pdf-cache';
 

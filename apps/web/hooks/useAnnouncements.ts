@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../lib/api-client';
-import type { Announcement } from '@ajitsir/shared';
+import type { Announcement } from '@neha/shared';
 
 export function useAnnouncements() {
   return useQuery({

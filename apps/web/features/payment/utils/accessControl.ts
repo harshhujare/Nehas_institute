@@ -1,4 +1,4 @@
-import type { User, NoteAccessType } from '@ajitsir/shared';
+import type { User, NoteAccessType } from '@neha/shared';
 
 /**
  * Source of truth for note access control.

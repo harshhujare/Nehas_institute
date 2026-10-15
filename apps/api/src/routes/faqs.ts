@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma, withRetry } from '../lib/prisma';
 import { requireSupport } from '../middleware/auth';
-import { CreateFAQSchema, UpdateFAQSchema } from '@ajitsir/shared';
+import { CreateFAQSchema, UpdateFAQSchema } from '@neha/shared';
 
 export const faqsRouter = Router();
 

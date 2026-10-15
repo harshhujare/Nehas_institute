@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import type { NoteWithSubject } from '@/hooks/useNotes';
 import { useRouter } from 'next/navigation';
-import type { User } from '@ajitsir/shared';
+import type { User } from '@neha/shared';
 import PaywallBanner from '../payment/PaywallBanner';
 import { canAccessNote } from '@/features/payment/utils/accessControl';
 import useAuthStore from '@/lib/auth-store';

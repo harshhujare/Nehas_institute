@@ -13,7 +13,7 @@
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@ajitsir/shared": ["./packages/shared/src/index.ts"]
+      "@neha/shared": ["./packages/shared/src/index.ts"]
     }
   },
   "exclude": ["node_modules"]

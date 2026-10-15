@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma, withRetry } from '../lib/prisma';
 import { requireAdmin, requireSuperAdmin, requireSupport } from '../middleware/auth';
-import { UpdateUserPlanSchema } from '@ajitsir/shared';
+import { UpdateUserPlanSchema } from '@neha/shared';
 import { Role, Plan } from '@prisma/client';
 
 export const adminRouter = Router();

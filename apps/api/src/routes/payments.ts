@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { prisma, withRetry } from '../lib/prisma';
 import { requireAuth } from '../middleware/auth';
 import { createRazorpayOrder, verifyRazorpaySignature, verifyWebhookSignature, isRazorpayConfigured } from '../services/razorpay';
-import { CreateOrderSchema, VerifyPaymentSchema } from '@ajitsir/shared';
+import { CreateOrderSchema, VerifyPaymentSchema } from '@neha/shared';
 
 export const paymentsRouter = Router();
 
