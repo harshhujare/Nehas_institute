@@ -11,11 +11,11 @@ import Link from 'next/link';
 const FALLBACK_PLANS: readonly PlanData[] = [
   {
     duration: 30,
-    label: 'Premium Access',
+    label: 'All-Access Pass',
     price: '₹499',
-    period: 'All premium notes',
+    period: 'All courses & guides',
     badge: 'Best Value',
-    description: 'Unlock all premium handwritten notes by Ajit Sir. Chapter-wise PDFs, bilingual explanations, and complete TET study material.',
+    description: 'Unlock all video courses and chef recipe guides by Neha Ma\'am.',
   },
 ] as const;
 
@@ -209,7 +209,7 @@ export default function PlansPage() {
     <div className="plans-page">
       <div className="plans-header">
         <h1 className="plans-title font-serif">Upgrade to Premium</h1>
-        <p className="plans-subtitle">One simple plan. Unlock all of Ajit Sir's handwritten notes.</p>
+        <p className="plans-subtitle">One simple plan. Unlock all cooking courses and culinary guides.</p>
       </div>
 
       <div className="plans-body">

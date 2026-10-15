@@ -14,7 +14,7 @@
 //   could extract them. Watermarks are still applied at render time.
 //   This mirrors how Scribd / Coursera handle premium content caching.
 
-const DB_NAME = 'AjitSirPdfCache';
+const DB_NAME = 'NehaInstitutePdfCache';
 const DB_VERSION = 2; // bump from 1 → 2 to trigger onupgradeneeded with new schema
 const STORE_NAME = 'pdfs';
 const STORAGE_CAP_BYTES = 600 * 1024 * 1024; // 600 MB

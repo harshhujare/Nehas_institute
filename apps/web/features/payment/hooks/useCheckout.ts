@@ -142,8 +142,8 @@ export function useCheckout() {
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'AjitSir Academy',
-        description: 'TET Study Notes Subscription',
+        name: "Neha's Institute",
+        description: 'Culinary Course & Masterclass Access',
         order_id: orderData.orderId,
         prefill: {
           name: user.name,

@@ -4,128 +4,55 @@ import * as bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ Refusing to seed in production environment (NODE_ENV=production).');
+    process.exit(1);
+  }
 
-  // Subjects
-  const childDev = await prisma.subject.upsert({
-    where: { name: 'Child Development & Pedagogy' },
-    update: {},
-    create: { name: 'Child Development & Pedagogy' },
-  });
+  const adminEmail = process.env.ADMIN_EMAIL || process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD || process.env.SEED_ADMIN_PASSWORD;
 
-  const language1 = await prisma.subject.upsert({
-    where: { name: 'Language I (Marathi)' },
-    update: {},
-    create: { name: 'Language I (Marathi)' },
-  });
+  if (!adminEmail || !adminPassword) {
+    console.error('❌ Missing required environment variables:');
+    console.error('   Please provide ADMIN_EMAIL and ADMIN_PASSWORD in your environment to seed the initial administrator.');
+    process.exit(1);
+  }
 
-  const mathematics = await prisma.subject.upsert({
-    where: { name: 'Mathematics' },
-    update: {},
-    create: { name: 'Mathematics' },
-  });
+  console.log('🌱 Seeding database for Neha\'s Institute...');
 
-  console.log('✅ Subjects created');
+  // ─── Super Admin User ───────────────────────────────────────────────────────────
+  const adminHash = await bcrypt.hash(adminPassword, 12);
+  const adminName = process.env.ADMIN_NAME || "Neha Ma'am";
 
-  // Admin user
-  const adminHash = await bcrypt.hash('Admin@1234', 12);
   const admin = await prisma.user.upsert({
-    where: { email: 'admin@ajitsir.com' },
+    where: { email: adminEmail },
     update: {},
     create: {
-      name: 'Ajit Kambale',
-      email: 'admin@ajitsir.com',
+      name: adminName,
+      email: adminEmail,
       passwordHash: adminHash,
       role: 'SUPER_ADMIN',
       plan: 'PAID',
     },
   });
 
-  // Demo student
-  const studentHash = await bcrypt.hash('Student@1234', 12);
-  await prisma.user.upsert({
-    where: { email: 'student@ajitsir.com' },
-    update: {},
-    create: {
-      name: 'Demo Student',
-      email: 'student@ajitsir.com',
-      passwordHash: studentHash,
-      role: 'STUDENT',
-      plan: 'FREE',
-    },
-  });
+  console.log(`✅ Super Admin created: ${admin.email} (${admin.name})`);
 
-  console.log('✅ Users created');
-
-  // Sample free test
-  const test = await prisma.test.create({
-    data: {
-      title: 'Child Development — Paper I (Sample)',
-      description: 'Sample MCQ test for TET Paper I',
-      subjectId: childDev.id,
-      isPaid: false,
-      questions: {
-        create: [
-          {
-            text: "According to Piaget's theory, at which stage does a child develop the concept of object permanence?",
-            options: [
-              { id: 'A', text: 'Pre-operational stage' },
-              { id: 'B', text: 'Sensorimotor stage' },
-              { id: 'C', text: 'Concrete operational stage' },
-              { id: 'D', text: 'Formal operational stage' },
-            ],
-            correctOption: 'B',
-            explanation: 'Object permanence develops during the Sensorimotor stage (0-2 years) according to Piaget.',
-            order: 1,
-          },
-          {
-            text: 'Which of the following is NOT a characteristic of the pre-operational stage?',
-            options: [
-              { id: 'A', text: 'Egocentrism' },
-              { id: 'B', text: 'Animism' },
-              { id: 'C', text: 'Conservation' },
-              { id: 'D', text: 'Symbolic thinking' },
-            ],
-            correctOption: 'C',
-            explanation: 'Conservation develops during the Concrete Operational stage, not the Pre-operational stage.',
-            order: 2,
-          },
-          {
-            text: "Vygotsky's Zone of Proximal Development (ZPD) refers to:",
-            options: [
-              { id: 'A', text: 'Tasks a child can do alone' },
-              { id: 'B', text: 'Tasks a child cannot do even with help' },
-              { id: 'C', text: "Tasks a child can do with a more knowledgeable other's help" },
-              { id: 'D', text: 'Tasks that are too easy for the child' },
-            ],
-            correctOption: 'C',
-            explanation: "ZPD is the gap between what a learner can do independently and what they can achieve with guidance.",
-            order: 3,
-          },
-        ],
-      },
-    },
-  });
-
-  console.log('✅ Sample test created:', test.title);
-
-  // ── Plan config — initial pricing (₹499 for 30-day / lifetime premium access)
+  // ─── Initial Plan Config (All-Access Pass) ──────────────────────────────────
   await prisma.planConfig.upsert({
     where: { planDuration: 30 },
-    update: {},  // never overwrite — admin may have changed the price
+    update: {}, // do not overwrite custom admin changes
     create: {
       planDuration: 30,
-      price: 49900,  // ₹499 in paise
-      label: 'Premium Access',
-      description: 'Unlock all premium handwritten notes by Ajit Sir. Get instant access to chapter-wise PDFs, bilingual explanations, and exclusive TET study material.',
+      price: 49900, // ₹499 in paise
+      label: 'All-Access Pass',
+      description: 'Unlock unlimited access to all courses, lectures, and chef recipe guides.',
       isActive: true,
     },
   });
 
-  console.log('✅ PlanConfig seeded: ₹499 / 30-day plan');
-  console.log('\n🎉 Seed complete!');
-  console.log('   Admin: admin@ajitsir.com / Admin@1234');
-  console.log('   Student: student@ajitsir.com / Student@1234');
+  console.log('✅ PlanConfig seeded: ₹499 / 30-day All-Access Pass');
+  console.log('\n🎉 Database seeding completed successfully!');
 }
 
 main()

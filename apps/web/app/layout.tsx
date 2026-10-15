@@ -22,13 +22,13 @@ const dmSans = DM_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "AjitSir Academy — Maharashtra TET Exam Preparation",
+  title: "Neha's Institute — Learn Cooking & Culinary Arts",
   description:
-    "Practice with real TET question papers, download expert notes, and track your progress — all in one place built for Maharashtra TET aspirants.",
-  keywords: "Maharashtra TET, TET preparation, TET notes, TET practice tests, Ajit Kambale",
+    "Master cooking and culinary techniques with Neha Ma'am. Step-by-step video masterclasses, curated recipe guides, and culinary learning.",
+  keywords: "cooking courses, culinary academy, recipe guides, cooking masterclasses, Neha's Institute",
   openGraph: {
-    title: "AjitSir Academy — Maharashtra TET Exam Preparation",
-    description: "Expert TET preparation platform for Maharashtra students.",
+    title: "Neha's Institute — Learn Cooking & Culinary Arts",
+    description: "Online cooking platform and culinary courses with Neha Ma'am.",
     type: "website",
   },
 };

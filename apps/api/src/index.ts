@@ -110,7 +110,7 @@ app.use('/api/faqs', faqsRouter);
 app.use(errorHandler);
 
 app.listen(PORT, () => {
-  console.log(`🚀 AjitSir Academy API running on http://localhost:${PORT}`);
+  console.log(`🚀 Neha's Institute API running on http://localhost:${PORT}`);
 });
 
 export default app;

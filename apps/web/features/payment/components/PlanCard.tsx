@@ -32,7 +32,7 @@ export default function PlanCard({ plan, isLoading, disabled, onSelect, statusTe
 
       <p className="plan-desc">
         {plan.description ||
-          `Get unlimited access to all premium TET study notes, chapter-wise PDFs, and exclusive content curated by Ajit Sir for ${plan.period}.`}
+          `Get unlimited access to all courses, video lectures, and chef recipe guides for ${plan.period}.`}
       </p>
 
       <ul className="plan-features">

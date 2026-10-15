@@ -33,14 +33,14 @@ function LoginContent() {
         <div className="login-brand">
           <Link href="/" className="login-logo-link" aria-label="Back to homepage">
             <span className="login-logo-dot" />
-            <span className="login-logo-text font-serif">AjitSir Academy</span>
+            <span className="login-logo-text font-serif">Neha's Institute</span>
           </Link>
         </div>
 
         <div className="login-header">
           <h1 className="login-title font-serif">Welcome back</h1>
           <p className="login-subtitle">
-            Sign in to access your TET study notes and practice tests.
+            Sign in to access your culinary courses and recipe guides.
           </p>
         </div>
 

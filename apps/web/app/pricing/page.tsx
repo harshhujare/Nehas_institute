@@ -7,16 +7,16 @@ import PlanCard, { type PlanData } from '@/features/payment/components/PlanCard'
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
 
-// Single plan — ₹499 gives access to ALL premium handwritten notes by Ajit Sir.
+// Single plan — ₹499 gives access to ALL courses and recipe guides by Neha Ma'am.
 // Backend supports multiple durations; additional plans can be added here in future.
 const PLANS: readonly PlanData[] = [
   {
     duration: 30,
-    label: 'Premium Access',
+    label: 'All-Access Pass',
     price: '₹499',
-    period: 'All premium notes',
+    period: 'All courses & guides',
     badge: 'Best Value',
-    description: 'Unlock all premium handwritten notes by Ajit Sir. Chapter-wise PDFs, bilingual explanations, and complete TET study material — all in one plan.',
+    description: 'Unlock all video courses, lectures, and culinary recipe guides by Neha Ma\'am — all in one all-access pass.',
   },
 ] as const;
 
@@ -81,7 +81,7 @@ export default function PricingPage() {
       <div className="pricing-page">
         <div className="pricing-header">
           <h1 className="pricing-title font-serif">Upgrade to Premium</h1>
-          <p className="pricing-subtitle">One plan. All of Ajit Sir's handwritten notes.</p>
+          <p className="pricing-subtitle">One plan. Unlimited access to all cooking courses and recipes.</p>
         </div>
         <div className="pricing-container" style={{ opacity: 0.5 }}>
           <div className="plans-grid">

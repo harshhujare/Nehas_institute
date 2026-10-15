@@ -54,9 +54,9 @@ export default function Navbar() {
       <nav className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`} role="navigation" aria-label="Main navigation">
         <div className="navbar-inner">
           {/* Logo */}
-          <Link href="/" className="navbar-logo" aria-label="AjitSir Academy Home">
+          <Link href="/" className="navbar-logo" aria-label="Neha's Institute Home">
           <span className="navbar-logo-dot" aria-hidden="true" />
-          <span className="navbar-logo-text font-serif">AjitSir.in</span>
+          <span className="navbar-logo-text font-serif">Neha's Institute</span>
           </Link> 
 
           {/* Desktop nav links */}
