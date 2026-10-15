@@ -9,9 +9,6 @@ export function useSubjects() {
     staleTime: Infinity,
     // Serve from localStorage cache even when offline (PersistQueryClientProvider)
     networkMode: 'offlineFirst',
-    queryFn: async () => {
-      const { data } = await apiClient.get<{ data: Subject[] }>('/api/subjects');
-      return data.data;
-    },
+    queryFn: async (): Promise<Subject[]> => [],
   });
 }

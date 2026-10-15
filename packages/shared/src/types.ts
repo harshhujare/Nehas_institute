@@ -27,67 +27,11 @@ export interface Subject {
   order: number;
 }
 
-export interface Question {
-  id: string;
-  testId: string;
-  text: string;
-  options: QuestionOption[];
-  order: number;
-  explanation?: string;
-  // NOTE: correctOption is NEVER included in list/get responses
-}
-
-export interface QuestionOption {
-  id: 'A' | 'B' | 'C' | 'D';
-  text: string;
-}
-
-export interface Test {
-  id: string;
-  title: string;
-  description?: string;
-  subjectId: string;
-  subject?: Subject;
-  isPaid: boolean;
-  createdAt: string;
-  _count?: { questions: number };
-}
-
-export interface TestWithQuestions extends Test {
-  questions: Question[];
-}
-
-export interface TestAttempt {
-  id: string;
-  userId: string;
-  testId: string;
-  test?: Pick<Test, 'id' | 'title' | 'subjectId'>;
-  answers: Record<string, string>; // { questionId: selectedOption }
-  score: number;
-  totalMarks: number;
-  timeTaken: number; // seconds
-  completedAt: string;
-}
-
-export interface AttemptBreakdownItem {
-  questionId: string;
-  questionText: string;
-  selected: string | null;
-  correct: string;
-  explanation?: string;
-  isCorrect: boolean;
-}
-
-export interface AttemptResult extends TestAttempt {
-  percentage: number;
-  breakdown: AttemptBreakdownItem[];
-}
-
 export interface Note {
   id: string;
   title: string;
   description?: string;
-  subjectId: string;
+  subjectId?: string;
   subject?: Subject;
   isPaid: boolean;
   accessType: NoteAccessType; // TIMED = expires with plan; LIFETIME = permanent once paid

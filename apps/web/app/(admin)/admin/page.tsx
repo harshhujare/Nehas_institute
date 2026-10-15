@@ -28,7 +28,6 @@ function StatCard({ label, value, sub, icon }: { label: string; value: string | 
 const QUICK_ACTIONS = [
   { href: '/admin/notes/upload', label: 'Upload Note', icon: '⬆', desc: 'Add a new PDF to the library' },
   { href: '/admin/announcements/new', label: 'Add Announcement', icon: '📢', desc: 'Post a new announcement or video' },
-  { href: '/admin/subjects', label: 'Manage Subjects', icon: '📚', desc: 'Add or edit subject categories' },
 ];
 
 export default function AdminDashboard() {

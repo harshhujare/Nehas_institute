@@ -9,7 +9,6 @@ import { registerRQCacheCleaner } from './auth-store';
 
 // ─── TTLs per data type ───────────────────────────────────────────────────────
 const TTL = {
-  subjects:      7 * 24 * 60 * 60 * 1000, // 7 days
   notes:              60 * 60 * 1000,      // 1 hour
   announcements:      30 * 60 * 1000,      // 30 min
   faqs:          7 * 24 * 60 * 60 * 1000, // 7 days
@@ -17,7 +16,7 @@ const TTL = {
 
 // Only these public, non-sensitive query keys are persisted to localStorage.
 // Auth state, payment data, admin queries, and streaming data are never persisted.
-const PERSISTED_KEYS = new Set<string>(['subjects', 'notes', 'announcements', 'faqs']);
+const PERSISTED_KEYS = new Set<string>(['notes', 'announcements', 'faqs']);
 
 function getQueryTTL(queryKey: readonly unknown[]): number {
   const key = queryKey[0] as string;

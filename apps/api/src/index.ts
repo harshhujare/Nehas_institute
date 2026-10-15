@@ -2,11 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { authRouter } from './routes/auth';
-import { testsRouter } from './routes/tests';
 import { notesRouter } from './routes/notes';
 import { paymentsRouter } from './routes/payments';
 import { adminRouter } from './routes/admin';
-import { subjectsRouter } from './routes/subjects';
 import { announcementsRouter } from './routes/announcements';
 import { supportRouter } from './routes/support';
 import { faqsRouter } from './routes/faqs';
@@ -101,8 +99,6 @@ app.get('/api/ping', (_req, res) => {
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRouter);
-app.use('/api/subjects', subjectsRouter);
-app.use('/api/tests', testsRouter);
 app.use('/api/notes', notesRouter);
 app.use('/api/announcements', announcementsRouter);
 app.use('/api/payments', paymentsRouter);
