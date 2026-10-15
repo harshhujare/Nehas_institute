@@ -164,7 +164,7 @@ export default function NoteCard({ note, user, onClick }: NoteCardProps) {
       {/* ── Card Body ──────────────────────────────────────────────── */}
       <div className="note-card-inner">
         <div className="note-subject">
-          <span className="subject-badge">{note.subject.name}</span>
+          {note.subject && <span className="subject-badge">{note.subject.name}</span>}
           {note.isPaid && <span className="paid-badge">PREMIUM</span>}
         </div>
 

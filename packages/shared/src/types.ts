@@ -5,7 +5,6 @@ export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'REFUNDED';
 export type AnnouncementType = 'TEXT' | 'VIDEO';
 export type TicketType = 'BUG_REPORT' | 'PAYMENT_ISSUE' | 'CONTENT_QUERY' | 'GENERAL';
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
-export type NoteAccessType = 'TIMED' | 'LIFETIME';
 
 // ─── Core Models ─────────────────────────────────────────────────────────────
 export interface User {
@@ -30,13 +29,12 @@ export interface Subject {
 export interface Note {
   id: string;
   title: string;
-  description?: string;
-  subjectId?: string;
-  subject?: Subject;
+  description?: string | null;
+  courseId?: string | null;
+  lectureId?: string | null;
   isPaid: boolean;
-  accessType: NoteAccessType; // TIMED = expires with plan; LIFETIME = permanent once paid
-  pageCount?: number;
-  thumbnailKey?: string;
+  pageCount?: number | null;
+  thumbnailKey?: string | null;
   createdAt: string;
   updatedAt: string;
   // NOTE: fileKey is NEVER sent to client
@@ -54,13 +52,6 @@ export interface Announcement {
   createdAt: string;
 }
 
-export interface NoteView {
-  id: string;
-  userId: string;
-  noteId: string;
-  viewedAt: string;
-}
-
 export interface Payment {
   id: string;
   userId: string;
@@ -68,7 +59,9 @@ export interface Payment {
   razorpayPaymentId?: string;
   amount: number; // paise
   status: PaymentStatus;
-  planDuration: number; // days
+  planDuration?: number | null; // days
+  productType?: string | null;  // 'PLAN' | 'COURSE'
+  courseId?: string | null;
   createdAt: string;
 }
 

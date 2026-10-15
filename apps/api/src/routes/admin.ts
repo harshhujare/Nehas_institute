@@ -31,18 +31,11 @@ adminRouter.use(requireAdmin());
 
 // GET /api/admin/stats — full platform statistics
 adminRouter.get('/stats', async (_req: Request, res: Response) => {
-  const [totalUsers, totalNotes, activeAnnouncements, todayViews, revenueResult] =
+  const [totalUsers, totalNotes, activeAnnouncements, revenueResult] =
     await withRetry(() => Promise.all([
       prisma.user.count(),
       prisma.note.count(),
       prisma.announcement.count({ where: { isActive: true } }),
-      prisma.noteView.count({
-        where: {
-          viewedAt: {
-            gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          },
-        },
-      }),
       prisma.payment.aggregate({
         where: { status: 'SUCCESS' },
         _sum: { amount: true },
@@ -54,7 +47,7 @@ adminRouter.get('/stats', async (_req: Request, res: Response) => {
       totalUsers,
       totalNotes,
       activeAnnouncements,
-      todayViews,
+      todayViews: 0,
       revenueInPaise: revenueResult._sum.amount || 0,
       revenueInRupees: ((revenueResult._sum.amount || 0) / 100).toFixed(2),
     },

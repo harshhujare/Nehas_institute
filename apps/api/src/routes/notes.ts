@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma, withRetry } from '../lib/prisma';
-import { requireAuth, requireAdmin, requireSuperAdmin } from '../middleware/auth';
+import { requireAuth, requireAdmin } from '../middleware/auth';
 import { upload } from '../middleware/upload';
 import { uploadFile, getFileStream, deleteFile } from '../services/storage';
 import { CreateNoteSchema } from '@neha/shared';
@@ -11,18 +11,18 @@ export const notesRouter = Router();
 
 // GET /api/notes — public list (no fileKey exposed)
 notesRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
-  const { subjectId } = req.query;
+  const { courseId, lectureId } = req.query;
   const page = Math.max(1, parseInt(req.query.page as string) || 1);
   const limit = Math.min(100, parseInt(req.query.limit as string) || 20);
   const search = (req.query.search as string) || '';
 
   const where: any = {};
-  if (subjectId) where.subjectId = String(subjectId);
+  if (courseId) where.courseId = String(courseId);
+  if (lectureId) where.lectureId = String(lectureId);
   if (search) {
     where.OR = [
       { title: { contains: search, mode: 'insensitive' } },
       { description: { contains: search, mode: 'insensitive' } },
-      { subject: { name: { contains: search, mode: 'insensitive' } } }
     ];
   }
 
@@ -37,12 +37,11 @@ notesRouter.get('/', asyncHandler(async (req: Request, res: Response) => {
         title: true,
         description: true,
         isPaid: true,
-        accessType: true,
         pageCount: true,
+        courseId: true,
+        lectureId: true,
         createdAt: true,
         updatedAt: true,
-        subjectId: true,
-        subject: { select: { id: true, name: true, nameMarathi: true, order: true } },
         // fileKey deliberately excluded
         // thumbnailKey excluded (only used server-side)
       },
@@ -75,31 +74,16 @@ notesRouter.get('/:id/stream', requireAuth(), asyncHandler(async (req: Request, 
         })
       );
 
-      if (note.accessType === 'LIFETIME') {
-        // LIFETIME notes: check if the user has ever paid (paidAt is set permanently)
-        if (!dbUser?.paidAt) {
-          res.status(403).json({ error: 'This note requires a paid subscription' });
-          return;
-        }
-      } else {
-        // TIMED notes: active paid plan required. Check DB truth as well as JWT
-        // so a just-paid user with an older FREE token is not incorrectly denied.
-        const hasLivePaidPlan =
-          dbUser?.plan === 'PAID' &&
-          (!dbUser.planExpiresAt || dbUser.planExpiresAt > new Date());
+      const hasLivePaidPlan =
+        dbUser?.plan === 'PAID' &&
+        (!dbUser.planExpiresAt || dbUser.planExpiresAt > new Date());
 
-        if (plan !== 'PAID' && !hasLivePaidPlan) {
-          res.status(403).json({ error: 'This note requires an active paid subscription' });
-          return;
-        }
+      if (plan !== 'PAID' && !hasLivePaidPlan) {
+        res.status(403).json({ error: 'This resource requires an active subscription or course enrollment' });
+        return;
       }
     }
   }
-
-  // Log the view for analytics
-  await withRetry(() => prisma.noteView.create({
-    data: { userId: req.user!.userId, noteId: note.id },
-  })).catch(() => { /* non-critical, don't fail the stream */ });
 
   // Fetch from S3 and pipe directly to the response
   const s3Object = await getFileStream(note.fileKey);
@@ -151,7 +135,6 @@ notesRouter.post(
     let thumbnailKey: string | undefined;
 
     // Pass the Buffer directly — AWS SDK v3 sets Content-Length automatically for Buffers.
-    // Do NOT convert to Readable.from() without Content-Length; the SDK will throw.
     await uploadFile(file.buffer, fileKey, 'application/pdf');
 
     if (thumbnail) {
@@ -162,11 +145,12 @@ notesRouter.post(
     // Save metadata to DB — wrapped in withRetry to handle Neon cold-start
     const note = await withRetry(() => prisma.note.create({
       data: {
+        id: noteId,
         title: parsed.data.title,
         description: parsed.data.description,
-        subjectId: parsed.data.subjectId,
+        courseId: parsed.data.courseId || null,
+        lectureId: parsed.data.lectureId || null,
         isPaid: parsed.data.isPaid,
-        accessType: (parsed.data as any).accessType ?? 'TIMED',
         fileKey,
         thumbnailKey,
       },
@@ -177,9 +161,9 @@ notesRouter.post(
         id: note.id,
         title: note.title,
         description: note.description,
-        subjectId: note.subjectId,
+        courseId: note.courseId,
+        lectureId: note.lectureId,
         isPaid: note.isPaid,
-        accessType: note.accessType,
         pageCount: note.pageCount,
         createdAt: note.createdAt,
         // fileKey NOT returned
@@ -197,15 +181,15 @@ notesRouter.patch('/:id', requireAdmin(), asyncHandler(async (req: Request, res:
     return;
   }
 
-  const { title, description, subjectId, isPaid, accessType, pageCount } = req.body;
+  const { title, description, courseId, lectureId, isPaid, pageCount } = req.body;
   const updated = await prisma.note.update({
     where: { id },
     data: {
       ...(title && { title }),
       ...(description !== undefined && { description }),
-      ...(subjectId && { subjectId }),
+      ...(courseId !== undefined && { courseId }),
+      ...(lectureId !== undefined && { lectureId }),
       ...(isPaid !== undefined && { isPaid }),
-      ...(accessType !== undefined && { accessType }),
       ...(pageCount !== undefined && { pageCount }),
     },
   });
@@ -215,9 +199,9 @@ notesRouter.patch('/:id', requireAdmin(), asyncHandler(async (req: Request, res:
       id: updated.id,
       title: updated.title,
       description: updated.description,
-      subjectId: updated.subjectId,
+      courseId: updated.courseId,
+      lectureId: updated.lectureId,
       isPaid: updated.isPaid,
-      accessType: updated.accessType,
       pageCount: updated.pageCount,
       createdAt: updated.createdAt,
     },
@@ -237,7 +221,6 @@ notesRouter.delete('/:id', requireAdmin(), asyncHandler(async (req: Request, res
   if (note.thumbnailKey) {
     await deleteFile(note.thumbnailKey);
   }
-  await prisma.noteView.deleteMany({ where: { noteId: id } });
   await prisma.note.delete({ where: { id } });
 
   res.json({ data: { message: 'Note deleted' } });

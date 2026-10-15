@@ -2,8 +2,8 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import apiClient from '../lib/api-client';
 import type { Note, Subject } from '@neha/shared';
 
-// The Notes returned by API include nested subject object
-export type NoteWithSubject = Note & { subject: Subject };
+// Notes may have an optional subject
+export type NoteWithSubject = Note & { subject?: Subject };
 
 export interface NotesResponse {
   notes: NoteWithSubject[];

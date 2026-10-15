@@ -20,7 +20,8 @@ export const GoogleAuthSchema = z.object({
 export const CreateNoteSchema = z.object({
   title: z.string().min(3).max(200),
   description: z.string().max(1000).optional(),
-  subjectId: z.string().cuid(),
+  courseId: z.string().cuid().optional(),
+  lectureId: z.string().cuid().optional(),
   isPaid: z
     .union([z.boolean(), z.string()])
     .transform((v) => v === true || v === 'true')

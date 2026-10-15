@@ -7,8 +7,6 @@ import Link from 'next/link';
 import { UploadCloud, FileText, ArrowLeft, Upload, X } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 
-interface Subject { id: string; name: string; }
-
 // Upload stage for clear UI feedback
 type UploadStage = 'idle' | 'preparing' | 'uploading' | 'saving' | 'done' | 'error';
 
@@ -28,7 +26,7 @@ export default function NoteUploadPage() {
   const [thumbnail, setThumbnail] = useState<Blob | null>(null);
   const [thumbnailPreview, setThumbnailPreview] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
-  const [form, setForm] = useState({ title: '', description: '', subjectId: '', isPaid: false });
+  const [form, setForm] = useState({ title: '', description: '', isPaid: false });
   const [error, setError] = useState<string | null>(null);
   const [stage, setStage] = useState<UploadStage>('idle');
   const [uploadProgress, setUploadProgress] = useState(0); // 0–100
@@ -44,14 +42,6 @@ export default function NoteUploadPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [stage]);
-
-  const { data: subjects } = useQuery({
-    queryKey: ['subjects'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<{ data: Subject[] }>('/api/subjects');
-      return data.data;
-    },
-  });
 
   // ─── Handle file selection ───────────────────────────────────────────────
   const handleFile = async (f: File) => {
@@ -109,7 +99,6 @@ export default function NoteUploadPage() {
     e.preventDefault();
     if (!file) { setError('Please select a PDF file'); return; }
     if (!form.title.trim()) { setError('Title is required'); return; }
-    if (!form.subjectId) { setError('Please select a subject'); return; }
 
     setError(null);
     setStage('preparing');
@@ -119,7 +108,6 @@ export default function NoteUploadPage() {
     fd.append('file', file);
     fd.append('title', form.title.trim());
     fd.append('description', form.description);
-    fd.append('subjectId', form.subjectId);
     fd.append('isPaid', String(form.isPaid));
     if (thumbnail) fd.append('thumbnail', thumbnail, 'thumbnail.jpg');
 
@@ -283,35 +271,17 @@ export default function NoteUploadPage() {
           />
         </div>
 
-        <div className="form-row">
-          <div className="form-group">
-            <label className="form-label" htmlFor="note-subject">Subject *</label>
-            <select
-              id="note-subject" className="form-select"
-              value={form.subjectId}
-              onChange={e => setForm(f => ({ ...f, subjectId: e.target.value }))}
-              required
+        <div className="form-group">
+          <label className="form-label">Access</label>
+          <label className="toggle-label">
+            <input type="checkbox" className="toggle-input"
+              checked={form.isPaid}
               disabled={isPending}
-            >
-              <option value="">Select subject…</option>
-              {subjects?.map(sub => (
-                <option key={sub.id} value={sub.id}>{sub.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Access</label>
-            <label className="toggle-label">
-              <input type="checkbox" className="toggle-input"
-                checked={form.isPaid}
-                disabled={isPending}
-                onChange={e => setForm(f => ({ ...f, isPaid: e.target.checked }))}
-              />
-              <span className="toggle-track"><span className="toggle-thumb" /></span>
-              <span className="toggle-text">{form.isPaid ? 'Paid only' : 'Free for all logged-in users'}</span>
-            </label>
-          </div>
+              onChange={e => setForm(f => ({ ...f, isPaid: e.target.checked }))}
+            />
+            <span className="toggle-track"><span className="toggle-thumb" /></span>
+            <span className="toggle-text">{form.isPaid ? 'Paid only' : 'Free for all logged-in users'}</span>
+          </label>
         </div>
 
         <div className="form-submit-row">

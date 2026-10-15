@@ -182,8 +182,11 @@ paymentsRouter.post('/verify', requireAuth(), async (req: Request, res: Response
   }
 
   // Calculate expiry from today (no stacking — user cannot buy while plan is active)
-  const planExpiresAt = new Date();
-  planExpiresAt.setDate(planExpiresAt.getDate() + payment.planDuration);
+  let planExpiresAt: Date | undefined;
+  if (payment.planDuration) {
+    planExpiresAt = new Date();
+    planExpiresAt.setDate(planExpiresAt.getDate() + payment.planDuration);
+  }
 
   // Fetch current paidAt to avoid overwriting an earlier timestamp
   const existingUser = await prisma.user.findUnique({
@@ -205,8 +208,7 @@ paymentsRouter.post('/verify', requireAuth(), async (req: Request, res: Response
     prisma.user.update({
       where: { id: req.user!.userId },
       data: {
-        plan: 'PAID',
-        planExpiresAt,
+        ...(planExpiresAt && { plan: 'PAID', planExpiresAt }),
         // paidAt: set once on first payment, never overwritten
         ...(existingUser?.paidAt == null && { paidAt: new Date() }),
       },
@@ -286,8 +288,11 @@ paymentsRouter.post('/webhook', async (req: Request, res: Response) => {
           });
 
           if (payment) {
-            const planExpiresAt = new Date();
-            planExpiresAt.setDate(planExpiresAt.getDate() + payment.planDuration);
+            let planExpiresAt: Date | undefined;
+            if (payment.planDuration) {
+              planExpiresAt = new Date();
+              planExpiresAt.setDate(planExpiresAt.getDate() + payment.planDuration);
+            }
 
             const existingUser = await prisma.user.findUnique({
               where: { id: payment.userId },
@@ -297,8 +302,7 @@ paymentsRouter.post('/webhook', async (req: Request, res: Response) => {
             await prisma.user.update({
               where: { id: payment.userId },
               data: {
-                plan: 'PAID',
-                planExpiresAt,
+                ...(planExpiresAt && { plan: 'PAID', planExpiresAt }),
                 ...(existingUser?.paidAt == null && { paidAt: new Date() }),
               },
             });

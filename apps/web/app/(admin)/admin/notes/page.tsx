@@ -6,15 +6,15 @@ import Link from 'next/link';
 import { Upload } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 
-interface Subject { id: string; name: string; }
 interface Note {
   id: string;
   title: string;
   description: string | null;
   isPaid: boolean;
   pageCount: number | null;
+  courseId?: string | null;
+  lectureId?: string | null;
   createdAt: string;
-  subject: { id: string; name: string };
 }
 
 export default function NotesAdminPage() {
@@ -24,7 +24,7 @@ export default function NotesAdminPage() {
   const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
-  const [editForm, setEditForm] = useState({ title: '', description: '', subjectId: '', isPaid: false });
+  const [editForm, setEditForm] = useState({ title: '', description: '', isPaid: false });
   const [editError, setEditError] = useState<string | null>(null);
 
   const handleSearch = (val: string) => {
@@ -54,14 +54,6 @@ export default function NotesAdminPage() {
     },
   });
 
-  const { data: subjects } = useQuery({
-    queryKey: ['subjects'],
-    queryFn: async () => {
-      const { data } = await apiClient.get<{ data: Subject[] }>('/api/subjects');
-      return data.data;
-    },
-  });
-
   const deleteMutation = useMutation({
     mutationFn: (id: string) => apiClient.delete(`/api/notes/${id}`),
     onSuccess: () => {
@@ -76,7 +68,6 @@ export default function NotesAdminPage() {
     mutationFn: () => apiClient.patch(`/api/notes/${editingNote!.id}`, {
       title: editForm.title,
       description: editForm.description || null,
-      subjectId: editForm.subjectId,
       isPaid: editForm.isPaid,
     }),
     onSuccess: () => {
@@ -93,7 +84,6 @@ export default function NotesAdminPage() {
     setEditForm({
       title: note.title,
       description: note.description ?? '',
-      subjectId: note.subject.id,
       isPaid: note.isPaid,
     });
     setEditError(null);
@@ -103,7 +93,6 @@ export default function NotesAdminPage() {
     e.preventDefault();
     setEditError(null);
     if (!editForm.title.trim()) { setEditError('Title is required'); return; }
-    if (!editForm.subjectId) { setEditError('Subject is required'); return; }
     updateMutation.mutate();
   };
 
@@ -124,7 +113,7 @@ export default function NotesAdminPage() {
       <div className="search-bar">
         <input
           id="notes-search" type="search" className="search-input"
-          placeholder="Search by title or subject…"
+          placeholder="Search notes…"
           value={search}
           onChange={e => handleSearch(e.target.value)}
         />
@@ -153,7 +142,6 @@ export default function NotesAdminPage() {
             <thead>
               <tr>
                 <th>Title</th>
-                <th>Subject</th>
                 <th>Pages</th>
                 <th>Status</th>
                 <th>Date</th>
@@ -166,9 +154,6 @@ export default function NotesAdminPage() {
                   <td>
                     <span className="note-title">{note.title}</span>
                     {note.description && <span className="note-desc-small">{note.description}</span>}
-                  </td>
-                  <td>
-                    <span className="subject-chip">{note.subject.name}</span>
                   </td>
                   <td className="text-muted">{note.pageCount ?? '—'}</td>
                   <td>
@@ -225,21 +210,6 @@ export default function NotesAdminPage() {
                   value={editForm.description}
                   onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
                 />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="edit-note-subject">Subject *</label>
-                <select
-                  id="edit-note-subject" className="form-input"
-                  value={editForm.subjectId}
-                  onChange={e => setEditForm(f => ({ ...f, subjectId: e.target.value }))}
-                  required
-                >
-                  <option value="">Select subject…</option>
-                  {subjects?.map(sub => (
-                    <option key={sub.id} value={sub.id}>{sub.name}</option>
-                  ))}
-                </select>
               </div>
 
               <div className="form-group">

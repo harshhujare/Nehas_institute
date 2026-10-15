@@ -1,6 +1,5 @@
--- Baseline migration — represents the full schema as of 2026-06-01
--- This migration is marked as already applied on existing databases.
--- New databases (fresh deploys) will run this to build the full schema.
+-- Baseline migration for Neha's Institute
+-- Contains core platform models: User, Payment, PlanConfig, Note, Announcement, FAQ, SupportTicket, TicketReply
 
 -- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
@@ -33,6 +32,7 @@ CREATE TABLE "User" (
     "role" "Role" NOT NULL DEFAULT 'STUDENT',
     "plan" "Plan" NOT NULL DEFAULT 'FREE',
     "planExpiresAt" TIMESTAMP(3),
+    "paidAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -40,53 +40,33 @@ CREATE TABLE "User" (
 );
 
 -- CreateTable
-CREATE TABLE "Subject" (
+CREATE TABLE "Payment" (
     "id" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "nameMarathi" TEXT,
-    "order" INTEGER NOT NULL DEFAULT 0,
+    "userId" TEXT NOT NULL,
+    "razorpayOrderId" TEXT NOT NULL,
+    "razorpayPaymentId" TEXT,
+    "amount" INTEGER NOT NULL,
+    "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
+    "planDuration" INTEGER,
+    "productType" TEXT,
+    "courseId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "Subject_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "Test" (
+CREATE TABLE "plan_config" (
     "id" TEXT NOT NULL,
-    "title" TEXT NOT NULL,
+    "planDuration" INTEGER NOT NULL,
+    "price" INTEGER NOT NULL,
+    "label" TEXT NOT NULL,
     "description" TEXT,
-    "subjectId" TEXT NOT NULL,
-    "isPaid" BOOLEAN NOT NULL DEFAULT false,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "Test_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Question" (
-    "id" TEXT NOT NULL,
-    "testId" TEXT NOT NULL,
-    "text" TEXT NOT NULL,
-    "options" JSONB NOT NULL,
-    "correctOption" TEXT NOT NULL,
-    "explanation" TEXT,
-    "order" INTEGER NOT NULL,
-
-    CONSTRAINT "Question_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "TestAttempt" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "testId" TEXT NOT NULL,
-    "answers" JSONB NOT NULL,
-    "score" INTEGER NOT NULL,
-    "totalMarks" INTEGER NOT NULL,
-    "timeTaken" INTEGER NOT NULL,
-    "completedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "TestAttempt_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "plan_config_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -94,25 +74,16 @@ CREATE TABLE "Note" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
-    "subjectId" TEXT NOT NULL,
     "fileKey" TEXT NOT NULL,
     "isPaid" BOOLEAN NOT NULL DEFAULT false,
     "pageCount" INTEGER,
     "thumbnailKey" TEXT,
+    "courseId" TEXT,
+    "lectureId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Note_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "NoteView" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "noteId" TEXT NOT NULL,
-    "viewedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "NoteView_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -129,20 +100,6 @@ CREATE TABLE "Announcement" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Announcement_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "Payment" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "razorpayOrderId" TEXT NOT NULL,
-    "razorpayPaymentId" TEXT,
-    "amount" INTEGER NOT NULL,
-    "status" "PaymentStatus" NOT NULL DEFAULT 'PENDING',
-    "planDuration" INTEGER NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "Payment_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -194,19 +151,16 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 CREATE UNIQUE INDEX "User_googleId_key" ON "User"("googleId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Subject_name_key" ON "Subject"("name");
-
--- CreateIndex
-CREATE INDEX "Note_subjectId_idx" ON "Note"("subjectId");
-
--- CreateIndex
-CREATE INDEX "NoteView_noteId_idx" ON "NoteView"("noteId");
-
--- CreateIndex
-CREATE INDEX "NoteView_userId_idx" ON "NoteView"("userId");
-
--- CreateIndex
 CREATE UNIQUE INDEX "Payment_razorpayOrderId_key" ON "Payment"("razorpayOrderId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "plan_config_planDuration_key" ON "plan_config"("planDuration");
+
+-- CreateIndex
+CREATE INDEX "Note_courseId_idx" ON "Note"("courseId");
+
+-- CreateIndex
+CREATE INDEX "Note_lectureId_idx" ON "Note"("lectureId");
 
 -- CreateIndex
 CREATE INDEX "FAQ_category_idx" ON "FAQ"("category");
@@ -222,27 +176,6 @@ CREATE INDEX "SupportTicket_status_idx" ON "SupportTicket"("status");
 
 -- CreateIndex
 CREATE INDEX "SupportTicket_type_idx" ON "SupportTicket"("type");
-
--- AddForeignKey
-ALTER TABLE "Test" ADD CONSTRAINT "Test_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "Subject"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Question" ADD CONSTRAINT "Question_testId_fkey" FOREIGN KEY ("testId") REFERENCES "Test"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "TestAttempt" ADD CONSTRAINT "TestAttempt_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "TestAttempt" ADD CONSTRAINT "TestAttempt_testId_fkey" FOREIGN KEY ("testId") REFERENCES "Test"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Note" ADD CONSTRAINT "Note_subjectId_fkey" FOREIGN KEY ("subjectId") REFERENCES "Subject"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "NoteView" ADD CONSTRAINT "NoteView_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "NoteView" ADD CONSTRAINT "NoteView_noteId_fkey" FOREIGN KEY ("noteId") REFERENCES "Note"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Payment" ADD CONSTRAINT "Payment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

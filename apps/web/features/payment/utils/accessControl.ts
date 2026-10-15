@@ -1,19 +1,19 @@
-import type { User, NoteAccessType } from '@neha/shared';
+import type { User } from '@neha/shared';
 
 /**
  * Source of truth for note access control.
  *
- * Access rules (evaluated in order):
+ * Access rules:
  * 1. Free notes → always accessible
  * 2. Paid notes, no user → locked (sign-in overlay)
  * 3. Paid notes, SUPER_ADMIN or CONTENT_MANAGER → always accessible
- * 4. LIFETIME notes → accessible if user.paidAt is set (ever paid, even if plan expired)
- * 5. TIMED notes → accessible only if user has active PAID plan (plan + non-expired planExpiresAt)
+ * 4. LIFETIME notes (if tagged) → accessible if user.paidAt is set
+ * 5. Paid notes → accessible if user has active PAID plan
  * 6. All other cases → locked (PaywallBanner)
  */
 export function canAccessNote(
   user: User | null,
-  note: { isPaid: boolean; accessType: NoteAccessType }
+  note: { isPaid: boolean; accessType?: string }
 ): boolean {
   // Rule 1: Free notes are always accessible
   if (!note.isPaid) return true;
@@ -24,12 +24,12 @@ export function canAccessNote(
   // Rule 3: Admin roles bypass the paywall entirely
   if (user.role === 'SUPER_ADMIN' || user.role === 'CONTENT_MANAGER') return true;
 
-  // Rule 4: LIFETIME access — permanent once user has ever paid (paidAt is set)
+  // Rule 4: LIFETIME access (if explicitly tagged)
   if (note.accessType === 'LIFETIME') {
     return user.paidAt !== null;
   }
 
-  // Rule 5: TIMED access — requires an active PAID plan
+  // Rule 5: Active PAID plan
   if (user.plan === 'PAID') {
     // null planExpiresAt means no expiry set → treat as indefinitely valid
     if (!user.planExpiresAt) return true;

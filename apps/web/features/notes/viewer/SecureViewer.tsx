@@ -155,7 +155,7 @@ export default function SecureViewer({ note, onClose }: SecureViewerProps) {
       <header className="viewer-header">
         <div className="viewer-title-group">
           <h2 className="viewer-title font-serif">{note.title}</h2>
-          <span className="viewer-badge">{note.subject.name}</span>
+          {note.subject && <span className="viewer-badge">{note.subject.name}</span>}
           {fetchState.stage === 'ready' && (
             <span className="viewer-page-count">{currentPage} / {numPages}</span>
           )}
