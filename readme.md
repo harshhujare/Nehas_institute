@@ -1,404 +1,158 @@
-# AjitSir Academy — Platform README
+# Neha's Institute — Culinary Learning Platform
 
-> An ed-tech platform for TET exam preparation — built for Ajit Kambale sir's audience.
-> Think Physics Wallah, but focused on Maharashtra TET/CTET with a strong community at its core.
-
-
-## 1. Project Overview
-
-AjitSir Academy is a full-stack web platform where students can:
-- Solve TET question papers and mock tests (MCQ, timed, auto-scored)
-- Download chapter-wise notes and study PDFs
-- (Future) Watch recorded lectures and live classes
-- (Future) Participate in leaderboards, doubt forums, and live quizzes
-
-The platform has two user roles:
-- **Student** — signs up, takes tests, downloads notes, manages their subscription
-- **Admin (Ajit sir / team)** — uploads content, manages question banks, views analytics
-
-
-## 2. Tech Stack
-
-| Layer | Technology | Reason |
-|---|---|---|
-| Frontend | Next.js 14 (App Router) | SSR, SEO, fast page loads |
-| Styling | Tailwind CSS + shadcn/ui | Consistent, accessible components |
-| State | Zustand + React Query | Client state + server data caching |
-| Backend | Node.js + Express  | REST API, lightweight, scalable |
-
-| Database | PostgreSQL | Relational data — users, tests, results |
-| File storage | Cloudflare R2 (S3-compatible) | PDFs, images; cheaper than S3 |
-| Auth | NextAuth.js (or Clerk) | Google OAuth + email/password |
-| Payments | Razorpay | UPI + card + wallet + subscriptions |
-| Cache | Redis | Sessions, rate limiting, leaderboard cache |
-
-| Hosting | Vercel (frontend) + Railway (backend) | Easy deploys, generous free tiers |
-| CDN / DNS | Cloudflare | Global edge, DDoS protection |
+An online video-lecture and recipe resource platform built for culinary masterclasses by Neha Ma'am. Students can watch structured video courses with DRM-grade protection, download chef-curated recipe guides, track their progress, and purchase courses or all-access passes via Razorpay.
 
 ---
 
-## 3. Folder Structure
+## 1. Architecture & Tech Stack
+
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Frontend** | Next.js 16 (App Router, Turbopack), React 19 | Fast static pages with server hydration and dynamic routes |
+| **State & Query** | Zustand 5, TanStack React Query 5 | Offline-first query caching and global auth store |
+| **PWA & Offline** | Service Worker, Cache API, IndexedDB | Shell caching, offline fallback page. **SW never caches `/api/*` or Bunny CDN domains.** |
+| **Backend** | Express 4.21, Node.js 20, TypeScript | Long-running REST API server |
+| **Database** | PostgreSQL on Neon Serverless with Prisma 6.5 | Pooled runtime connections (`DATABASE_URL`) + direct migration connection (`DIRECT_URL`) |
+| **Video Streaming** | Bunny Stream | HLS adaptive bitrate video, signed iframe embeds, token authentication, and referrer locking |
+| **Resource Storage** | AWS S3 (`@aws-sdk/client-s3`) | Secure private bucket for recipe PDFs and downloadable resources |
+| **Payments** | Razorpay | UPI, cards, and netbanking with idempotent webhook handling |
+| **Auth** | Custom JWT + Google Identity Services (GIS) | 120-min access token + 30-day httpOnly refresh cookie |
+
+---
+
+## 2. Platform Decisions (Phase 1 / Phase 2 Roadmap)
+
+The following architectural decisions are established for Phase 1 and Phase 2:
+
+1. **Selling Model:** Per-course purchase is the primary business model. The existing `PLAN` (e.g. 30-day / 365-day) functions as an **All-Access Pass** unlocking all published courses.
+2. **Order Creation Backward Compatibility:** `POST /api/payments/create-order` remains strictly backward compatible. If `productType` is omitted, it defaults to `'PLAN'`.
+3. **Refund Handling:**
+   - Existing `PLAN` refund behavior is preserved.
+   - For `COURSE` purchases: a full refund sets `Enrollment.revokedAt = new Date()`. Partial refunds are ignored.
+4. **Free Course Enrollment:** Free courses (`priceInPaise === 0`) bypass Razorpay (as Razorpay cannot process ₹0 orders) and enroll directly via `POST /api/courses/:id/enroll`.
+5. **Playback Access Bypass (`canWatchLecture`):** Only staff with `CONTENT_MANAGER` and `SUPER_ADMIN` roles bypass lecture paywalls. Other roles (`STUDENT`, `SUPPORT_MANAGER`) must have an active enrollment or valid all-access plan.
+6. **Phase 1 Video Management:** Includes a minimal admin page / seed script to create sections and lectures by pasting an existing Bunny Video ID.
+7. **Phase 3 Concurrency Limit:** Video stream concurrency limiting will be implemented via either a Postgres heartbeat table or Upstash Redis (to be decided during Phase 3).
+
+---
+
+## 3. Directory Layout
 
 ```
-ajitsir-academy/
+.
 ├── apps/
-│   ├── web/                  # Next.js frontend
-│   │   ├── app/              # App Router pages
-│   │   │   ├── (auth)/       # Login, register, forgot password
-│   │   │   ├── (student)/    # Dashboard, tests, notes, profile
-│   │   │   ├── (admin)/      # Admin panel — upload content, analytics
-│   │   │   └── api/          # Next.js API routes (auth, webhooks)
-│   │   ├── components/       # Reusable UI components
-│   │   │   ├── ui/           # shadcn/ui base components
-│   │   │   ├── test/         # MCQ engine, timer, result card
-│   │   │   ├── notes/        # PDF viewer, download button
-│   │   │   └── layout/       # Navbar, sidebar, footer
-│   │   ├── lib/              # Utilities, hooks, API clients
-│   │   └── public/           # Static assets, icons
-│   │
-│   └── api/                  # Express backend
-│       ├── src/
-│       │   ├── routes/       # Auth, tests, notes, payments, admin
-│       │   ├── controllers/  # Business logic per route
-│       │   ├── middleware/    # Auth guard, rate limiter, file upload
-│       │   ├── services/     # Razorpay, R2 storage, email
-│       │   └── utils/        # Helpers, validators
-│       └── prisma/
-│           └── schema.prisma # Database schema
-│
+│   ├── api/                   # Express backend API
+│   │   ├── prisma/            # Prisma schema, migrations, and seed script
+│   │   ├── src/
+│   │   │   ├── middleware/    # Auth, error handling, rawBody capture
+│   │   │   ├── routes/        # Auth, admin, notes, payments, support, faqs
+│   │   │   └── services/      # AWS S3, Razorpay, Google OAuth, token
+│   │   └── .env.example
+│   └── web/                   # Next.js web application
+│       ├── app/               # App Router pages (homepage, notes, account, admin, help)
+│       ├── components/        # Layout, auth, notes, help UI
+│       ├── features/          # Payment checkout and secure PDF viewer
+│       ├── hooks/             # React Query hooks
+│       ├── public/            # Static assets, PWA manifest, service worker
+│       └── .env.example
 ├── packages/
-│   └── shared/               # Shared types and constants (TypeScript)
-│
-└── docker-compose.yml        # Local dev: Postgres + Redis
+│   └── shared/                # Shared TypeScript types and Zod schemas (@neha/shared)
+├── docker-compose.yml         # Local PostgreSQL container for development
+├── turbo.json                 # Turborepo task pipeline
+└── package.json               # Monorepo root workspace config
 ```
 
 ---
 
-## 4. Database Schema (Prisma)
+## 4. Environment Setup
 
-Key models — the agent should use these as the source of truth when generating backend code.
+### Backend (`apps/api/.env`)
 
-```prisma
-model User {
-  id            String       @id @default(cuid())
-  name          String
-  email         String       @unique
-  passwordHash  String?
-  googleId      String?      @unique
-  role          Role         @default(STUDENT)
-  plan          Plan         @default(FREE)
-  planExpiresAt DateTime?
-  createdAt     DateTime     @default(now())
-  attempts      TestAttempt[]
-  payments      Payment[]
-}
+Copy `apps/api/.env.example` to `apps/api/.env`:
 
-enum Role  { STUDENT ADMIN }
-enum Plan  { FREE PAID }
-
-model Subject {
-  id        String    @id @default(cuid())
-  name      String                          // e.g. "Child Development"
-  tests     Test[]
-  notes     Note[]
-}
-
-model Test {
-  id          String       @id @default(cuid())
-  title       String
-  description String?
-  subjectId   String
-  subject     Subject      @relation(fields: [subjectId], references: [id])
-  isPaid      Boolean      @default(false)
-  questions   Question[]
-  attempts    TestAttempt[]
-  createdAt   DateTime     @default(now())
-}
-
-model Question {
-  id            String   @id @default(cuid())
-  testId        String
-  test          Test     @relation(fields: [testId], references: [id])
-  text          String
-  options       Json     // [{ id: "A", text: "..." }, ...]
-  correctOption String   // "A" | "B" | "C" | "D"
-  explanation   String?
-  order         Int
-}
-
-model TestAttempt {
-  id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  testId      String
-  test        Test     @relation(fields: [testId], references: [id])
-  answers     Json     // { questionId: selectedOption }
-  score       Int
-  totalMarks  Int
-  timeTaken   Int      // seconds
-  completedAt DateTime @default(now())
-}
-
-model Note {
-  id        String   @id @default(cuid())
-  title     String
-  subjectId String
-  subject   Subject  @relation(fields: [subjectId], references: [id])
-  fileKey   String   // Cloudflare R2 object key
-  isPaid    Boolean  @default(false)
-  createdAt DateTime @default(now())
-}
-
-model Payment {
-  id                String        @id @default(cuid())
-  userId            String
-  user              User          @relation(fields: [userId], references: [id])
-  razorpayOrderId   String        @unique
-  razorpayPaymentId String?
-  amount            Int           // in paise
-  status            PaymentStatus @default(PENDING)
-  planDuration      Int           // days (e.g. 30, 365)
-  createdAt         DateTime      @default(now())
-}
-
-enum PaymentStatus { PENDING SUCCESS FAILED REFUNDED }
-```
-
----
-
-## 5. API Routes
-
-### Auth  `/api/auth`
-| Method | Route | Description |
-|---|---|---|
-| POST | `/register` | Email + password signup |
-| POST | `/login` | Email + password login, returns JWT |
-| GET | `/google` | Google OAuth redirect |
-| GET | `/google/callback` | Google OAuth callback |
-| POST | `/logout` | Invalidate session |
-| POST | `/refresh` | Refresh access token |
-
-### Tests  `/api/tests`
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| GET | `/` | Public | List all tests (title, subject, isPaid) |
-| GET | `/:id` | Student | Get test with questions (gated if isPaid) |
-| POST | `/:id/attempt` | Student | Submit answers, receive score + breakdown |
-| GET | `/attempts/me` | Student | Student's own attempt history |
-| POST | `/` | Admin | Create new test |
-| PUT | `/:id` | Admin | Update test |
-| DELETE | `/:id` | Admin | Delete test |
-
-### Notes  `/api/notes`
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| GET | `/` | Public | List notes (title, subject, isPaid) |
-| GET | `/:id/download` | Student | Generate signed R2 URL (gated if isPaid) |
-| POST | `/` | Admin | Upload PDF to R2, save metadata |
-| DELETE | `/:id` | Admin | Delete note |
-
-### Payments  `/api/payments`
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| POST | `/create-order` | Student | Create Razorpay order |
-| POST | `/verify` | Student | Verify payment signature, upgrade plan |
-| POST | `/webhook` | Public (HMAC) | Razorpay webhook — handle async events |
-
-### Admin  `/api/admin`
-| Method | Route | Auth | Description |
-|---|---|---|---|
-| GET | `/stats` | Admin | Total users, revenue, test attempts |
-| GET | `/users` | Admin | Paginated user list |
-| PATCH | `/users/:id/plan` | Admin | Manually upgrade/downgrade plan |
-
----
-
-## 6. Key Feature Specs
-
-### 6.1 Mock Test Engine
-
-The test-taking flow works as follows:
-
-1. Student opens a test → frontend fetches questions (options only, no correct answer).
-2. A countdown timer runs client-side. If time runs out, answers are auto-submitted.
-3. On submit, POST `/api/tests/:id/attempt` sends `{ answers: { [questionId]: selectedOption } }`.
-4. Backend scores the attempt server-side (never trust client-side scoring).
-5. Response includes: score, total, percentage, per-question breakdown with explanation.
-6. Result is saved to `TestAttempt` table.
-7. Student can review their past attempts from the dashboard.
-
-**Important:** Correct answers must never be sent to the frontend before submission. Only send them in the attempt result response.
-
-### 6.2 Notes / PDF Downloads
-
-- PDFs are stored in Cloudflare R2 under a private bucket (no public access).
-- When a student requests a download, backend checks their plan (`FREE` vs `PAID`) against `note.isPaid`.
-- If allowed, backend generates a **signed URL** (valid for 5 minutes) and returns it to the frontend.
-- Frontend opens the signed URL in a new tab — browser handles the download.
-- Never expose the raw R2 file key or bucket URL to the client.
-
-### 6.3 Subscriptions & Payments (Razorpay)
-
-1. Student clicks "Buy Plan" → frontend calls `POST /api/payments/create-order`.
-2. Backend creates a Razorpay order and returns `{ orderId, amount, currency }`.
-3. Frontend opens Razorpay checkout modal with the order details.
-4. On success, Razorpay returns `{ razorpayPaymentId, razorpayOrderId, razorpaySignature }`.
-5. Frontend sends these to `POST /api/payments/verify`.
-6. Backend verifies HMAC signature using the Razorpay secret key.
-7. If valid, update `user.plan = PAID` and `user.planExpiresAt = now + planDuration days`.
-8. Also handle `payment.captured` and `payment.failed` events via the Razorpay webhook.
-
-### 6.4 Admin Content Upload
-
-- Admin uploads a PDF via the admin panel.
-- Frontend sends the file to `POST /api/notes` as `multipart/form-data`.
-- Backend uses `multer` + a Cloudflare R2 SDK (AWS SDK v3 with custom endpoint) to stream the file directly to R2.
-- Only the `fileKey` (R2 object key) is stored in the database — not a public URL.
-
----
-
-## 7. Auth & Authorization Rules
-
-| Resource | FREE student | PAID student | Admin |
-|---|---|---|---|
-| List tests | ✅ | ✅ | ✅ |
-| Take free test | ✅ | ✅ | ✅ |
-| Take paid test | ❌ | ✅ | ✅ |
-| Download free notes | ✅ | ✅ | ✅ |
-| Download paid notes | ❌ | ✅ | ✅ |
-| View own attempts | ✅ | ✅ | ✅ |
-| Admin panel | ❌ | ❌ | ✅ |
-
-Use a middleware `requireAuth(roles?: Role[], plan?: Plan)` on protected routes.
-
----
-
-## 8. Environment Variables
-
-```env
+```bash
 # App
 NODE_ENV=development
 PORT=4000
 FRONTEND_URL=http://localhost:3000
 
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/ajitsir_academy
+# Database (Neon Serverless PostgreSQL)
+DATABASE_URL="postgresql://user:password@ep-pooler.region.aws.neon.tech/neha_institute?sslmode=require"
+DIRECT_URL="postgresql://user:password@ep-direct.region.aws.neon.tech/neha_institute?sslmode=require"
 
-# Redis
-REDIS_URL=redis://localhost:6379
+# Admin Seeding (required for npm run db:seed; refuses to run in production)
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=your_secure_password
+ADMIN_NAME=Neha Ma'am
 
-# JWT
-JWT_SECRET=your_jwt_secret_here
-JWT_EXPIRES_IN=15m
-REFRESH_TOKEN_SECRET=your_refresh_secret_here
-
-# Google OAuth
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_CALLBACK_URL=http://localhost:4000/api/auth/google/callback
+# JWT & Auth
+JWT_SECRET=change_me_to_a_long_random_string
+JWT_EXPIRES_IN=120m
+REFRESH_TOKEN_SECRET=change_me_to_another_long_random_string
+GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 
 # Razorpay
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-RAZORPAY_WEBHOOK_SECRET=
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=your_razorpay_key_secret
+RAZORPAY_WEBHOOK_SECRET=your_razorpay_webhook_secret
 
-# Cloudflare R2
-R2_ACCOUNT_ID=
-R2_ACCESS_KEY_ID=
-R2_SECRET_ACCESS_KEY=
-R2_BUCKET_NAME=ajitsir-academy
-R2_ENDPOINT=https://<account_id>.r2.cloudflarestorage.com
+# AWS S3 Storage
+AWS_REGION=ap-south-1
+AWS_ACCESS_KEY_ID=your_aws_access_key_id
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key
+AWS_BUCKET_NAME=neha-institute-storage
+
+# Bunny Stream Video (Phase 1+)
+BUNNY_LIBRARY_ID=your_bunny_library_id
+BUNNY_API_KEY=your_bunny_api_key
+BUNNY_TOKEN_AUTH_KEY=your_bunny_token_auth_key
+BUNNY_CDN_HOSTNAME=video.yourdomain.com
+BUNNY_WEBHOOK_SECRET_TOKEN=your_random_secret_token
 ```
 
----
+### Frontend (`apps/web/.env.local`)
 
-## 9. Local Development Setup
+Copy `apps/web/.env.example` to `apps/web/.env.local`:
 
 ```bash
-# 1. Clone the repo
-git clone https://github.com/yourorg/ajitsir-academy.git
-cd ajitsir-academy
-
-# 2. Install dependencies
-npm install
-
-# 3. Start Postgres + Redis locally
-docker-compose up -d
-
-# 4. Copy env files
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
-
-# 5. Run DB migrations
-cd apps/api
-npx prisma migrate dev
-
-# 6. Seed test data (optional)
-npx prisma db seed
-
-# 7. Start both apps
-cd ../../
-npm run dev   # runs web on :3000 and api on :4000
+NEXT_PUBLIC_API_URL=http://localhost:4000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
+NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
 ```
 
 ---
 
-## 10. Phase Roadmap
+## 5. Development Workflow
 
-### Phase 1 — MVP (Build this first)
-- [ ] User auth (Google + email/password)
-- [ ] Subject & test management (admin)
-- [ ] MCQ test engine with timer and auto-scoring
-- [ ] Test attempt history + result review
-- [ ] Notes upload (admin) + download (student)
-- [ ] Free vs paid content gating
-- [ ] Razorpay subscription payment
-- [ ] Basic student dashboard
-- [ ] Basic admin dashboard with stats
+```bash
+# 1. Install dependencies
+npm install
 
-### Phase 2 — Growth
-- [ ] Leaderboard (top scorers per test)
-- [ ] Email notifications (welcome, payment receipt, test result)
-- [ ] Performance analytics per student (weak topics, progress over time)
-- [ ] Bookmarks (save questions for later)
-- [ ] Referral system
+# 2. Build the shared package
+npm run build --workspace=@neha/shared
 
-### Phase 3 — Video & Community
-- [ ] Recorded lecture uploads (Bunny.net or Cloudflare Stream)
-- [ ] Live class scheduling and streaming
-- [ ] Doubt forum / Q&A section
-- [ ] Push notifications (PWA)
-- [ ] Mobile app (React Native or Flutter)
+# 3. Generate Prisma client
+npm run db:generate --workspace=@neha/api
+
+# 4. Run type check across all workspaces
+npm run type-check
+
+# 5. Run development server (API on 4000, Web on 3000)
+npm run dev
+```
 
 ---
 
-## 11. Conventions for AI Agents
+## 6. Database Migrations
 
-When generating code for this project, follow these rules:
-
-1. **Language:** TypeScript everywhere — frontend and backend.
-2. **API style:** REST with JSON. Use standard HTTP status codes.
-3. **Error format:** All errors return `{ error: string, details?: any }`.
-4. **Auth:** Use JWT access tokens (15 min expiry) + refresh tokens (7 days). Store refresh token in httpOnly cookie.
-5. **Validation:** Use `zod` for all request body validation on the backend.
-6. **Database:** Always go through Prisma — no raw SQL unless absolutely necessary.
-7. **File uploads:** Stream to R2 directly; do not save files to disk on the server.
-8. **Payments:** Always verify Razorpay signature server-side before upgrading a user's plan. Never trust the client.
-9. **Correct answers:** Never include `correctOption` in the GET `/api/tests/:id` response. Only return it in the attempt result.
-10. **Naming:** camelCase for variables/functions, PascalCase for components and types, kebab-case for file names.
-11. **Commits:** Conventional commits — `feat:`, `fix:`, `chore:`, `docs:` prefixes.
-12. **No hardcoded secrets** — always read from `process.env`.
-
----
-
-## 12. Contact & Context
-
-- **Platform:** AjitSir Academy
-- **Creator:** Ajit Kambale sir — Maharashtra TET educator on YouTube
-- **Target audience:** Students preparing for TET (Primary + Upper Primary) in Maharashtra
-- **Primary language of content:** Marathi + Hindi (UI can be English)
-- **Business model:** Freemium — free tests + notes preview; paid subscription unlocks everything
-
----
-
-*This README is the single source of truth for the project. Update it as the platform evolves.*
+- Migrations use Neon Serverless Postgres with `directUrl` configuration.
+- To deploy migrations to Neon:
+  ```bash
+  cd apps/api
+  npx prisma migrate deploy
+  ```
+- To seed the initial admin account and baseline plan (development only):
+  ```bash
+  cd apps/api
+  npm run db:seed
+  ```
