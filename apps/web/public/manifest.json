@@ -4,8 +4,8 @@
   "description": "Learn Cooking and Culinary Arts with Neha Ma'am",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f0f13",
-  "theme_color": "#0f0f13",
+  "background_color": "#fffbf7",
+  "theme_color": "#fffbf7",
   "icons": [
     {
       "src": "/icon-512.png",
