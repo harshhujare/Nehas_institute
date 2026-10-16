@@ -1,5 +1,5 @@
-import type { Metadata } from "next";
-import { Playfair_Display, DM_Sans } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Playfair_Display, Plus_Jakarta_Sans, Baloo_2 } from "next/font/google";
 import "./globals.css";
 import QueryProvider from "@/lib/query-provider";
 import Navbar from "@/components/layout/Navbar";
@@ -12,23 +12,39 @@ import Script from "next/script";
 const playfair = Playfair_Display({
   variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["400", "500", "700"],
+  weight: ["500", "600", "700"],
+  display: "swap",
 });
 
-const dmSans = DM_Sans({
+const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
+const baloo2 = Baloo_2({
+  variable: "--font-devanagari",
+  subsets: ["devanagari", "latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+});
+
+export const viewport: Viewport = {
+  themeColor: "#fffbf7",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export const metadata: Metadata = {
-  title: "Neha's Institute — Learn Cooking & Culinary Arts",
+  title: "Neha's Institute — Master Cooking & Culinary Arts",
   description:
-    "Master cooking and culinary techniques with Neha Ma'am. Step-by-step video masterclasses, curated recipe guides, and culinary learning.",
-  keywords: "cooking courses, culinary academy, recipe guides, cooking masterclasses, Neha's Institute",
+    "Step-by-step cooking masterclasses, video lectures, and authentic culinary techniques with Neha Ma'am. Watch on phone or computer.",
+  keywords: "cooking courses, culinary academy, recipe guides, video masterclasses, cooking academy, Neha's Institute",
   openGraph: {
-    title: "Neha's Institute — Learn Cooking & Culinary Arts",
-    description: "Online cooking platform and culinary courses with Neha Ma'am.",
+    title: "Neha's Institute — Master Cooking & Culinary Arts",
+    description: "Online cooking masterclasses and authentic recipe guides with Neha Ma'am.",
     type: "website",
   },
 };
@@ -39,12 +55,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${playfair.variable} ${dmSans.variable}`} data-theme="light" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`${playfair.variable} ${plusJakarta.variable} ${baloo2.variable}`}
+      data-theme="light"
+      suppressHydrationWarning
+    >
       <head>
         <link rel="offline" href="/offline.html" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-512.png" />
-        <meta name="theme-color" content="#0f0f13" />
         <Script
           id="theme-script"
           strategy="beforeInteractive"
@@ -59,7 +79,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col font-sans">
         <Script
           id="sw-script"
           strategy="afterInteractive"
@@ -79,9 +99,9 @@ export default function RootLayout({
           <QueryProvider>
             <AuthProvider>
               <Navbar />
-              <div style={{ paddingTop: "64px" }}>
+              <main className="flex-1 page-bottom-clear" style={{ paddingTop: "64px" }}>
                 {children}
-              </div>
+              </main>
               <BottomNav />
             </AuthProvider>
           </QueryProvider>
