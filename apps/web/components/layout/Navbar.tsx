@@ -61,9 +61,9 @@ export default function Navbar() {
 
           {/* Desktop nav links */}
           <div className="navbar-links" role="list">
-            <Link href="/pricing" className="navbar-link" role="listitem" style={{ color: 'var(--accent)', fontWeight: 600 }}>Pricing</Link>
-            <Link href="/#notes" className="navbar-link" role="listitem">Notes</Link>
-            <Link href="/#about" className="navbar-link" role="listitem">About</Link>
+            <Link href="/" className="navbar-link" role="listitem">Home</Link>
+            <Link href="/notes" className="navbar-link" role="listitem">Recipe Notes</Link>
+            <Link href="/pricing" className="navbar-link" role="listitem" style={{ color: 'var(--accent)', fontWeight: 600 }}>All-Access Pass</Link>
             <Link href="/help" className="navbar-link" role="listitem">Help</Link>
           </div>
 
@@ -189,7 +189,7 @@ export default function Navbar() {
         .navbar-logo-dot {
           width: 8px;
           height: 8px;
-          background: var(--text-primary);
+          background: var(--accent);
           border-radius: 50%;
           display: block;
           flex-shrink: 0;

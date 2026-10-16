@@ -10,7 +10,7 @@ const NAV_ITEMS = [
     href: '/',
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'}
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
         <path d="M9 21V12h6v9"/>
       </svg>
@@ -18,11 +18,11 @@ const NAV_ITEMS = [
     isActive: (pathname: string) => pathname === '/',
   },
   {
-    label: 'Notes',
+    label: 'Recipes',
     href: '/notes',
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'}
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z"/>
         <path d="M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z"/>
       </svg>
@@ -30,24 +30,24 @@ const NAV_ITEMS = [
     isActive: (pathname: string) => pathname.startsWith('/notes'),
   },
   {
-    label: 'Plans',
-    href: '/plans',
+    label: 'Pass',
+    href: '/pricing',
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'}
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
       </svg>
     ),
-    isActive: (pathname: string) => pathname.startsWith('/plans') || pathname.startsWith('/pricing'),
+    isActive: (pathname: string) => pathname.startsWith('/pricing') || pathname.startsWith('/plans'),
   },
   {
     label: 'Account',
     href: '/account',
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? 'currentColor' : 'none'}
-        stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="12" cy="8" r="4"/>
-        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
       </svg>
     ),
     isActive: (pathname: string) =>
@@ -59,7 +59,7 @@ export default function BottomNav() {
   const pathname = usePathname();
   const { user } = useAuthStore();
 
-  // Hide on admin pages — admins use the full desktop layout
+  // Hide on admin pages — admins use the dedicated responsive admin shell
   if (pathname.startsWith('/admin')) return null;
 
   return (
@@ -108,14 +108,14 @@ export default function BottomNav() {
             bottom: 0;
             left: 0;
             right: 0;
-            height: 64px;
-            background: var(--navbar-scrolled-bg, rgba(255,255,255,0.92));
+            height: calc(64px + env(safe-area-inset-bottom, 0px));
+            background: var(--navbar-scrolled-bg, rgba(255, 251, 247, 0.95));
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border-top: 1px solid var(--border);
             z-index: 100;
-            /* iPhone safe area */
             padding-bottom: env(safe-area-inset-bottom, 0px);
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.04);
           }
 
           .bottom-nav-item {
@@ -126,6 +126,7 @@ export default function BottomNav() {
             justify-content: center;
             gap: 3px;
             padding: 0.5rem 0.25rem;
+            min-height: 48px;
             text-decoration: none;
             color: var(--text-muted);
             transition: color 0.18s ease;
@@ -136,10 +137,10 @@ export default function BottomNav() {
             content: '';
             position: absolute;
             top: 0;
-            left: 20%;
-            right: 20%;
-            height: 2px;
-            background: var(--accent, #2563eb);
+            left: 24%;
+            right: 24%;
+            height: 2.5px;
+            background: var(--accent);
             border-radius: 0 0 4px 4px;
             opacity: 0;
             transform: scaleX(0);
@@ -147,7 +148,7 @@ export default function BottomNav() {
           }
 
           .bottom-nav-item--active {
-            color: var(--accent, #2563eb);
+            color: var(--accent);
           }
 
           .bottom-nav-item--active::before {
@@ -164,7 +165,7 @@ export default function BottomNav() {
           }
 
           .bottom-nav-label {
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             font-weight: 500;
             line-height: 1;
             letter-spacing: 0.01em;
@@ -179,12 +180,12 @@ export default function BottomNav() {
             width: 22px;
             height: 22px;
             border-radius: 50%;
-            background: var(--border-strong);
+            background: var(--bg-surface-2);
             color: var(--text-secondary);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 0.55rem;
+            font-size: 0.6rem;
             font-weight: 700;
             border: 1.5px solid var(--border);
           }
