@@ -114,20 +114,20 @@ function LoginContent() {
           transform: translateX(-50%);
           width: 600px;
           height: 600px;
-          background: radial-gradient(circle, var(--border) 0%, transparent 70%);
+          background: radial-gradient(circle, var(--accent-soft) 0%, transparent 70%);
           border-radius: 50%;
         }
 
         .login-card {
           position: relative;
           z-index: 1;
-          background: var(--bg-surface-2);
+          background: var(--bg-surface);
           border: 1px solid var(--border);
-          border-radius: 20px;
-          padding: 2.5rem 2rem;
+          border-radius: 24px;
+          padding: 2.75rem 2.25rem;
           width: 100%;
-          max-width: 420px;
-          backdrop-filter: blur(12px);
+          max-width: 440px;
+          box-shadow: var(--shadow-warm);
         }
 
         .login-brand {
@@ -145,7 +145,7 @@ function LoginContent() {
         .login-logo-dot {
           width: 8px;
           height: 8px;
-          background: var(--text-primary);
+          background: var(--accent);
           border-radius: 50%;
           display: block;
         }
