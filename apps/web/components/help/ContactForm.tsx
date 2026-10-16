@@ -128,71 +128,74 @@ export default function ContactForm({ onSuccess }: ContactFormProps) {
 
       <style>{`
         .contact-form {
-          background: var(--bg-surface);
-          border: 1px solid var(--border);
-          border-radius: 16px;
+          background: var(--color-surface, #ffffff);
+          border: 1px solid var(--color-border, #fed7aa);
+          border-radius: 20px;
           padding: 2rem;
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+          box-shadow: 0 4px 16px rgba(194, 65, 12, 0.04);
         }
 
         .contact-form-title {
+          font-family: var(--font-playfair), Georgia, serif;
           font-size: 1.4rem;
           font-weight: 700;
-          color: var(--text-primary);
+          color: var(--color-espresso, #1c1917);
           margin-bottom: 0.25rem;
         }
         .contact-form-subtitle {
-          font-size: 0.875rem;
-          color: var(--text-secondary);
+          font-size: 0.88rem;
+          color: var(--color-muted, #78716c);
+          line-height: 1.5;
         }
 
         .contact-error {
           padding: 0.875rem 1rem;
-          background: var(--danger-bg);
-          color: var(--danger-text);
-          border: 1px solid var(--danger-border);
+          background: #fef2f2;
+          color: #dc2626;
+          border: 1px solid #fecaca;
           border-radius: 10px;
-          font-size: 0.875rem;
+          font-size: 0.88rem;
         }
 
-        .contact-fields { display: flex; flex-direction: column; gap: 1rem; }
+        .contact-fields { display: flex; flex-direction: column; gap: 1.15rem; }
 
-        .contact-field { display: flex; flex-direction: column; gap: 0.35rem; }
+        .contact-field { display: flex; flex-direction: column; gap: 0.4rem; }
 
         .contact-label {
-          font-size: 0.875rem;
-          font-weight: 500;
-          color: var(--text-primary);
+          font-size: 0.88rem;
+          font-weight: 600;
+          color: var(--color-espresso, #1c1917);
         }
 
         .contact-select,
         .contact-input,
         .contact-textarea {
           width: 100%;
-          background: var(--input-bg);
-          border: 1px solid var(--border);
-          border-radius: 10px;
+          background: var(--color-cream, #fffbf7);
+          border: 1px solid var(--color-border, #fed7aa);
+          border-radius: 12px;
           padding: 0.75rem 1rem;
-          color: var(--text-primary);
-          font-size: 0.9rem;
+          color: var(--color-espresso, #1c1917);
+          font-size: 16px; /* 16px prevents iOS Safari auto-zoom */
           font-family: inherit;
           outline: none;
-          transition: border-color 0.15s;
+          transition: border-color 0.15s, box-shadow 0.15s;
           appearance: none;
         }
         .contact-select:focus,
         .contact-input:focus,
         .contact-textarea:focus {
-          border-color: var(--border-strong);
+          border-color: var(--color-terracotta, #c2410c);
+          box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.12);
         }
-        .contact-textarea { resize: none; }
+        .contact-textarea { resize: vertical; min-height: 110px; }
 
         .contact-input::placeholder,
         .contact-textarea::placeholder {
-          color: var(--text-placeholder);
+          color: #a8a29e;
         }
 
         .contact-submit {
@@ -201,19 +204,24 @@ export default function ContactForm({ onSuccess }: ContactFormProps) {
           justify-content: center;
           gap: 0.5rem;
           width: 100%;
-          background: var(--accent-bg);
-          color: var(--accent-text);
+          min-height: 48px;
+          background: var(--color-terracotta, #c2410c);
+          color: #ffffff;
           border: none;
-          border-radius: 10px;
+          border-radius: 12px;
           padding: 0.875rem 1.5rem;
-          font-size: 0.95rem;
+          font-size: 1rem;
           font-weight: 600;
           font-family: inherit;
           cursor: pointer;
-          transition: opacity 0.2s;
+          transition: background 0.15s, transform 0.15s;
+          box-shadow: 0 4px 14px rgba(194, 65, 12, 0.25);
         }
-        .contact-submit:hover:not(:disabled) { opacity: 0.88; }
-        .contact-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+        .contact-submit:hover:not(:disabled) { 
+          background: #9a3412; 
+          transform: translateY(-1px);
+        }
+        .contact-submit:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
 
         .contact-submit-icon { width: 18px; height: 18px; }
         .spinning { animation: spin 0.8s linear infinite; }

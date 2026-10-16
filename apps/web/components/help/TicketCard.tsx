@@ -58,16 +58,18 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           justify-content: space-between;
           align-items: flex-start;
           gap: 1.5rem;
-          padding: 1.25rem;
-          background: var(--bg-surface-2);
-          border: 1px solid var(--border);
-          border-radius: 14px;
+          padding: 1.25rem 1.5rem;
+          background: var(--color-surface, #ffffff);
+          border: 1px solid var(--color-border, #fed7aa);
+          border-radius: 16px;
           text-decoration: none;
-          transition: border-color 0.15s, background 0.15s;
+          transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+          box-shadow: 0 2px 8px rgba(194, 65, 12, 0.03);
         }
         .ticket-card:hover {
-          border-color: var(--border-strong);
-          background: var(--bg-hover);
+          border-color: var(--color-terracotta, #c2410c);
+          box-shadow: 0 6px 20px rgba(194, 65, 12, 0.08);
+          transform: translateY(-1px);
         }
 
         .ticket-card-left { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -76,30 +78,30 @@ export default function TicketCard({ ticket }: TicketCardProps) {
 
         .ticket-type-tag {
           font-size: 0.72rem;
-          font-weight: 500;
-          padding: 0.2rem 0.5rem;
-          background: var(--bg-hover);
-          color: var(--text-secondary);
+          font-weight: 600;
+          padding: 0.2rem 0.55rem;
+          background: #fef3c7;
+          color: #92400e;
           border-radius: 6px;
-          border: 1px solid var(--border);
+          border: 1px solid #fde68a;
         }
 
         .ticket-id {
           font-size: 0.72rem;
-          color: var(--text-muted);
+          color: var(--color-muted, #78716c);
           font-family: monospace;
         }
 
         .ticket-subject {
           font-size: 1rem;
-          font-weight: 500;
-          color: var(--text-primary);
+          font-weight: 600;
+          color: var(--color-espresso, #1c1917);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
           transition: color 0.15s;
         }
-        .ticket-card:hover .ticket-subject { color: var(--accent-bg); }
+        .ticket-card:hover .ticket-subject { color: var(--color-terracotta, #c2410c); }
 
         .ticket-card-right {
           display: flex;
@@ -114,11 +116,11 @@ export default function TicketCard({ ticket }: TicketCardProps) {
           align-items: center;
           gap: 0.35rem;
           font-size: 0.8rem;
-          color: var(--text-secondary);
+          color: var(--color-muted, #78716c);
           white-space: nowrap;
         }
 
-        .ticket-stat-icon { width: 14px; height: 14px; color: var(--text-muted); }
+        .ticket-stat-icon { width: 14px; height: 14px; color: var(--color-muted, #78716c); }
 
         @media (max-width: 600px) {
           .ticket-card { flex-direction: column; }
