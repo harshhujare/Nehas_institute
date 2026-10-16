@@ -53,6 +53,11 @@ async function main() {
   });
 
   console.log('✅ PlanConfig seeded: ₹499 / 30-day All-Access Pass');
+
+  // ─── Seed Masterclasses & Curriculum ───────────────────────────────────────────
+  const { seedCourses } = await import('./seed-courses');
+  await seedCourses();
+
   console.log('\n🎉 Database seeding completed successfully!');
 }
 
