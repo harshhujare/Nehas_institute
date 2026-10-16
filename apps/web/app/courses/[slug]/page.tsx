@@ -100,16 +100,46 @@ const COURSE_DATA = {
   ],
 };
 
+import { useCourse } from '@/hooks/useCourses';
+
 export default function CourseDetailPage() {
   const params = useParams();
-  const slug = params?.slug as string || 'mastering-indian-gravies';
+  const slug = (params?.slug as string) || 'mastering-restaurant-style-indian-gravies';
   const { user } = useAuthStore();
-  const [openModuleIds, setOpenModuleIds] = useState<string[]>(['m1', 'm2']);
+  const [openModuleIds, setOpenModuleIds] = useState<string[]>(['m1', 'm2', 's0', 's1']);
+
+  const { data: course, isLoading } = useCourse(slug);
 
   const isPaid = user?.plan === 'PAID';
   const planExpiresAt = user?.planExpiresAt ? new Date(user.planExpiresAt) : null;
   const isExpired = planExpiresAt ? planExpiresAt < new Date() : false;
   const isActivePaid = isPaid && !isExpired;
+  const isEnrolled = isActivePaid || Boolean(course?.isEnrolled) || user?.role !== 'STUDENT';
+
+  // Adapt live backend sections or fallback
+  const liveModules = course?.sections && course.sections.length > 0
+    ? course.sections.map((s, idx) => ({
+        id: s.id || `s${idx}`,
+        title: s.title,
+        description: `${s.lectures.length} lessons • Step-by-step masterclass`,
+        lessons: s.lectures.map((l) => ({
+          id: l.id,
+          title: l.title,
+          duration: `${Math.floor(l.durationSec / 60)}:${String(l.durationSec % 60).padStart(2, '0')}`,
+          isFreePreview: l.isFreePreview,
+          hasRecipeCard: true,
+        })),
+      }))
+    : null;
+
+  const currentModules = liveModules || COURSE_DATA.modules;
+  const courseTitle = course?.title || COURSE_DATA.title;
+  const courseCategory = course?.category || COURSE_DATA.category;
+  const courseTagline = course?.shortDescription || course?.description || COURSE_DATA.tagline;
+  const totalLessonsCount = course?.totalLectures || COURSE_DATA.totalLessons;
+  const durationText = course?.totalDurationSec
+    ? `${Math.floor(course.totalDurationSec / 3600)}h ${Math.floor((course.totalDurationSec % 3600) / 60)}m`
+    : COURSE_DATA.duration;
 
   const toggleModule = (id: string) => {
     setOpenModuleIds((prev) => 
@@ -128,11 +158,11 @@ export default function CourseDetailPage() {
               <div className="breadcrumb-nav">
                 <Link href="/courses">All Masterclasses</Link>
                 <span>›</span>
-                <span className="current-crumb">{COURSE_DATA.category}</span>
+                <span className="current-crumb">{courseCategory}</span>
               </div>
 
-              <h1 className="course-main-title">{COURSE_DATA.title}</h1>
-              <p className="course-tagline">{COURSE_DATA.tagline}</p>
+              <h1 className="course-main-title">{courseTitle}</h1>
+              <p className="course-tagline">{courseTagline}</p>
 
               <div className="course-badges-row">
                 <span className="rating-badge">
@@ -141,11 +171,11 @@ export default function CourseDetailPage() {
                 </span>
                 <span className="meta-pill">
                   <Clock size={14} className="inline mr-1" />
-                  {COURSE_DATA.duration}
+                  {durationText}
                 </span>
                 <span className="meta-pill">
                   <BookOpen size={14} className="inline mr-1" />
-                  {COURSE_DATA.totalLessons} Lessons
+                  {totalLessonsCount} Lessons
                 </span>
                 <span className="meta-pill">
                   <Award size={14} className="inline mr-1 text-emerald-600" />
@@ -184,7 +214,7 @@ export default function CourseDetailPage() {
                       Watch Free Preview Lecture
                     </Link>
 
-                    {isActivePaid ? (
+                    {isEnrolled ? (
                       <Link href={`/courses/${slug}/watch`} className="btn-start-course">
                         Start Full Masterclass →
                       </Link>
@@ -240,13 +270,13 @@ export default function CourseDetailPage() {
                   <div>
                     <h2 className="card-heading">Course Curriculum</h2>
                     <p className="syllabus-sub">
-                      {COURSE_DATA.modules.length} Modules • {COURSE_DATA.totalLessons} Lessons • {COURSE_DATA.duration} Total
+                      {currentModules.length} Modules • {totalLessonsCount} Lessons • {durationText} Total
                     </p>
                   </div>
                 </div>
 
                 <div className="modules-accordion">
-                  {COURSE_DATA.modules.map((mod) => {
+                  {currentModules.map((mod) => {
                     const isOpen = openModuleIds.includes(mod.id);
                     return (
                       <div key={mod.id} className="module-group">

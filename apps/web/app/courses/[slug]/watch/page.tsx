@@ -1,9 +1,8 @@
-'use client';
-
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import useAuthStore from '@/lib/auth-store';
+import { useCourse, useLecturePlay, useLectureProgress } from '@/hooks/useCourses';
 import { 
   Play, 
   Pause, 
@@ -29,6 +28,7 @@ interface Lesson {
   number: number;
   title: string;
   duration: string;
+  durationSec?: number;
   isFreePreview: boolean;
   completed?: boolean;
 }
@@ -52,8 +52,30 @@ type WatchTab = 'lessons' | 'recipe' | 'qa';
 
 export default function CourseWatchPage() {
   const params = useParams();
-  const slug = params?.slug as string || 'mastering-indian-gravies';
+  const slug = (params?.slug as string) || 'mastering-restaurant-style-indian-gravies';
   const { user } = useAuthStore();
+
+  const { data: course, isLoading: isCourseLoading } = useCourse(slug);
+  const { recordProgress } = useLectureProgress(course?.id);
+
+  // Map live backend curriculum sections into a flat lesson sequence
+  const liveLessons = useMemo<Lesson[] | null>(() => {
+    if (!course?.sections || course.sections.length === 0) return null;
+    let n = 1;
+    return course.sections.flatMap((sec) =>
+      sec.lectures.map((lec) => ({
+        id: lec.id,
+        number: n++,
+        title: lec.title,
+        duration: `${Math.floor(lec.durationSec / 60)}:${String(lec.durationSec % 60).padStart(2, '0')}`,
+        durationSec: lec.durationSec,
+        isFreePreview: lec.isFreePreview,
+        completed: course.userProgress?.completedLectureIds?.includes(lec.id) || false,
+      }))
+    );
+  }, [course]);
+
+  const activeLessons = liveLessons || LESSONS;
 
   const [activeLessonId, setActiveLessonId] = useState<string>('l1');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
@@ -62,15 +84,36 @@ export default function CourseWatchPage() {
   const [showLockedModal, setShowLockedModal] = useState<boolean>(false);
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>(['l1']);
 
+  // Sync initial lesson when live course loads
+  useEffect(() => {
+    if (liveLessons && liveLessons.length > 0) {
+      setActiveLessonId((prev) => {
+        const found = liveLessons.some((l) => l.id === prev);
+        return found ? prev : liveLessons[0].id;
+      });
+      if (course?.userProgress?.completedLectureIds) {
+        setCompletedLessonIds(course.userProgress.completedLectureIds);
+      }
+    }
+  }, [liveLessons, course]);
+
   const isPaid = user?.plan === 'PAID';
   const planExpiresAt = user?.planExpiresAt ? new Date(user.planExpiresAt) : null;
   const isExpired = planExpiresAt ? planExpiresAt < new Date() : false;
   const isActivePaid = isPaid && !isExpired;
+  const isUserEntitled = isActivePaid || Boolean(course?.isEnrolled) || user?.role !== 'STUDENT';
 
-  const currentLesson = LESSONS.find((l) => l.id === activeLessonId) || LESSONS[0];
+  const currentLesson = activeLessons.find((l) => l.id === activeLessonId) || activeLessons[0];
+  const canAccessCurrent = currentLesson.isFreePreview || isUserEntitled;
+
+  // Retrieve signed embed URL from backend
+  const { data: playData, isLoading: isPlayLoading } = useLecturePlay(
+    currentLesson?.id,
+    isPlaying && canAccessCurrent
+  );
 
   const handleSelectLesson = (lesson: Lesson) => {
-    if (!lesson.isFreePreview && !isActivePaid) {
+    if (!lesson.isFreePreview && !isUserEntitled) {
       setShowLockedModal(true);
       return;
     }
@@ -79,9 +122,14 @@ export default function CourseWatchPage() {
   };
 
   const toggleLessonCompleted = (lessonId: string) => {
+    const isCompleted = completedLessonIds.includes(lessonId);
+    const newCompleted = !isCompleted;
     setCompletedLessonIds((prev) => 
-      prev.includes(lessonId) ? prev.filter((id) => id !== lessonId) : [...prev, lessonId]
+      newCompleted ? [...prev, lessonId] : prev.filter((id) => id !== lessonId)
     );
+    if (user && course?.id) {
+      recordProgress({ lectureId: lessonId, positionSec: 0, completed: newCompleted });
+    }
   };
 
   return (
@@ -92,7 +140,9 @@ export default function CourseWatchPage() {
           <Link href={`/courses/${slug}`} className="back-link">
             ← Back to Course
           </Link>
-          <span className="course-title-badge">Mastering Restaurant-Style Indian Gravies</span>
+          <span className="course-title-badge">
+            {course?.title || 'Mastering Restaurant-Style Indian Gravies'}
+          </span>
         </div>
       </div>
 
@@ -103,25 +153,45 @@ export default function CourseWatchPage() {
           {/* Pinned 16:9 Video Player */}
           <div className="video-player-box">
             <div className="video-viewport">
-              {/* Mock Video UI */}
-              <div className="player-overlay">
-                <button 
-                  onClick={() => setIsPlaying(!isPlaying)}
-                  className="big-play-btn"
-                  aria-label={isPlaying ? 'Pause video' : 'Play video'}
-                >
-                  {isPlaying ? (
-                    <Pause size={32} className="text-white fill-white" />
-                  ) : (
+              {/* If playing and signed URL available, render real stream */}
+              {isPlaying && playData?.embedUrl ? (
+                <div className="absolute inset-0 w-full h-full bg-black z-10">
+                  <iframe
+                    src={playData.embedUrl}
+                    className="w-full h-full border-0 absolute inset-0"
+                    allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
+                    allowFullScreen
+                    title={currentLesson.title}
+                  />
+                </div>
+              ) : isPlayLoading ? (
+                <div className="absolute inset-0 w-full h-full bg-stone-950 flex flex-col items-center justify-center text-amber-500 z-10">
+                  <div className="w-10 h-10 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mb-3" />
+                  <span className="text-xs text-stone-400 font-medium tracking-wide">Loading Secure Stream…</span>
+                </div>
+              ) : (
+                /* Poster Video UI */
+                <div className="player-overlay">
+                  <button 
+                    onClick={() => {
+                      if (!canAccessCurrent) {
+                        setShowLockedModal(true);
+                        return;
+                      }
+                      setIsPlaying(true);
+                    }}
+                    className="big-play-btn"
+                    aria-label="Play video"
+                  >
                     <Play size={32} className="text-white fill-white ml-1" />
-                  )}
-                </button>
-              </div>
+                  </button>
+                </div>
+              )}
 
               {/* Player Top Meta */}
               <div className="player-top-meta">
                 <span className="player-badge">
-                  Lesson {currentLesson.number} of {LESSONS.length}
+                  Lesson {currentLesson.number} of {activeLessons.length}
                 </span>
                 <span className="speed-badge">Speed: {playbackSpeed}</span>
               </div>
@@ -223,22 +293,22 @@ export default function CourseWatchPage() {
                 <div className="progress-info-row">
                   <span className="progress-label">Course Progress</span>
                   <span className="progress-pct">
-                    {Math.round((completedLessonIds.length / LESSONS.length) * 100)}%
+                    {activeLessons.length > 0 ? Math.round((completedLessonIds.length / activeLessons.length) * 100) : 0}%
                   </span>
                 </div>
                 <div className="progress-track">
                   <div 
                     className="progress-fill" 
-                    style={{ width: `${(completedLessonIds.length / LESSONS.length) * 100}%` }} 
+                    style={{ width: `${activeLessons.length > 0 ? (completedLessonIds.length / activeLessons.length) * 100 : 0}%` }} 
                   />
                 </div>
               </div>
 
               <div className="lessons-items-list">
-                {LESSONS.map((l) => {
+                {activeLessons.map((l) => {
                   const isActive = l.id === activeLessonId;
                   const isCompleted = completedLessonIds.includes(l.id);
-                  const isLocked = !l.isFreePreview && !isActivePaid;
+                  const isLocked = !l.isFreePreview && !isUserEntitled;
 
                   return (
                     <button

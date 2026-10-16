@@ -133,18 +133,70 @@ const COURSES: readonly Course[] = [
   },
 ] as const;
 
+import { useCourses } from '@/hooks/useCourses';
+
+function getCategoryGradient(cat: string): string {
+  switch (cat) {
+    case 'Regional Indian':
+      return 'linear-gradient(135deg, #c2410c, #9a3412)';
+    case 'Baking & Pastry':
+      return 'linear-gradient(135deg, #d97706, #b45309)';
+    case 'Mithai & Sweets':
+      return 'linear-gradient(135deg, #b91c1c, #881337)';
+    case 'Street Classics':
+      return 'linear-gradient(135deg, #ea580c, #c2410c)';
+    default:
+      return 'linear-gradient(135deg, #78350f, #451a03)';
+  }
+}
+
+function formatDuration(sec?: number): string {
+  if (!sec || sec <= 0) return 'Self-Paced';
+  const hours = Math.floor(sec / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins} Mins`;
+}
+
 export default function CoursesCatalogPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('All Tracks');
   const [searchQuery, setSearchQuery] = useState('');
 
-  const filteredCourses = COURSES.filter((course) => {
-    const matchesCategory = selectedCategory === 'All Tracks' || course.category === selectedCategory;
-    const matchesSearch = 
-      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      course.category.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+  const { data: liveCoursesData, isLoading } = useCourses({
+    category: selectedCategory === 'All Tracks' ? undefined : selectedCategory,
+    search: searchQuery.trim() || undefined,
   });
+
+  const liveCourses = liveCoursesData?.data;
+
+  // Adapt live courses or fallback to pre-rendered courses
+  const displayCourses = liveCourses && liveCourses.length > 0
+    ? liveCourses.map((c) => ({
+        id: c.id,
+        slug: c.slug,
+        title: c.title,
+        description: c.shortDescription || c.description,
+        category: c.category,
+        duration: formatDuration(c.totalDurationSec),
+        lessonsCount: c.totalLectures || 0,
+        rating: 4.95,
+        studentsCount: 1200 + c.order * 150,
+        level: c.level === 'BEGINNER' ? 'Beginner Friendly' : c.level === 'ADVANCED' ? 'Advanced Technique' : 'Intermediate',
+        badge: c.priceInPaise === 0 ? 'Free Access' : c.order === 1 ? 'Flagship Masterclass' : undefined,
+        hasFreePreview: true,
+        accentGradient: getCategoryGradient(c.category),
+        priceInPaise: c.priceInPaise,
+      }))
+    : COURSES.filter((course) => {
+        const matchesCategory = selectedCategory === 'All Tracks' || course.category === selectedCategory;
+        const matchesSearch =
+          course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          course.category.toLowerCase().includes(searchQuery.toLowerCase());
+        return matchesCategory && matchesSearch;
+      });
+
+  const filteredCourses = displayCourses;
 
   return (
     <div className="courses-page">

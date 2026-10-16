@@ -94,6 +94,12 @@ export interface LectureProgress {
   updatedAt: string;
 }
 
+export interface Subject {
+  id: string;
+  name: string;
+  order?: number;
+}
+
 export interface Note {
   id: string;
   title: string;
