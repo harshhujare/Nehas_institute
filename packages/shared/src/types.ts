@@ -6,6 +6,9 @@ export type AnnouncementType = 'TEXT' | 'VIDEO';
 export type TicketType = 'BUG_REPORT' | 'PAYMENT_ISSUE' | 'CONTENT_QUERY' | 'GENERAL';
 export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
 
+export type VideoStatus = 'UPLOADING' | 'PROCESSING' | 'READY' | 'FAILED';
+export type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+
 // ─── Core Models ─────────────────────────────────────────────────────────────
 export interface User {
   id: string;
@@ -19,11 +22,76 @@ export interface User {
   createdAt: string;
 }
 
-export interface Subject {
+export interface LectureSummary {
   id: string;
-  name: string;
-  nameMarathi?: string;
+  sectionId: string;
+  title: string;
+  description?: string | null;
   order: number;
+  durationSec: number;
+  status: VideoStatus;
+  isFreePreview: boolean;
+  createdAt: string;
+  updatedAt: string;
+  // NOTE: videoId is deliberately omitted for security
+}
+
+export interface SectionWithLectures {
+  id: string;
+  courseId: string;
+  title: string;
+  order: number;
+  lectures: LectureSummary[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CourseSummary {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  shortDescription?: string | null;
+  category: string;
+  level: CourseLevel;
+  thumbnailKey?: string | null;
+  previewVideoId?: string | null;
+  priceInPaise: number;
+  isPublished: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+  totalLectures?: number;
+  totalDurationSec?: number;
+}
+
+export interface CourseDetail extends CourseSummary {
+  sections: SectionWithLectures[];
+  isEnrolled?: boolean;
+  userProgress?: {
+    completedLectureIds: string[];
+    percentComplete: number;
+    lastWatchedLectureId?: string | null;
+  };
+}
+
+export interface PlaybackAuthResponse {
+  embedUrl: string;
+  expiresAt: number;
+  lecture: {
+    id: string;
+    title: string;
+    durationSec: number;
+    isFreePreview: boolean;
+  };
+}
+
+export interface LectureProgress {
+  userId: string;
+  lectureId: string;
+  positionSec: number;
+  completed: boolean;
+  updatedAt: string;
 }
 
 export interface Note {
