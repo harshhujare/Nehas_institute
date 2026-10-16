@@ -18,33 +18,50 @@ import {
   Star, 
   Smartphone,
   ChevronDown,
-  Award
+  Award,
+  Croissant,
+  Flame,
+  UtensilsCrossed,
+  Leaf,
+  Video,
+  FileText,
+  MessageSquare,
+  Zap,
+  Lock
 } from 'lucide-react';
 
 const TRACKS = [
   {
-    icon: '🍞',
+    icon: Croissant,
     title: 'Artisan Baking & Desserts',
     desc: 'Master foolproof eggless tea cakes, artisanal cookies, sourdoughs, and French pastries with precise temperature guides.',
     tag: 'Popular',
+    iconColor: 'text-amber-800',
+    iconBg: 'bg-amber-100/70 border-amber-300',
   },
   {
-    icon: '🍛',
+    icon: Flame,
     title: 'Royal Indian Gravies',
     desc: 'Learn restaurant-grade makhani, bhuna, and korma bases. Perfect the art of tempering, slow-simmering, and authentic spice blending.',
     tag: 'Bestseller',
+    iconColor: 'text-orange-800',
+    iconBg: 'bg-orange-100/70 border-orange-300',
   },
   {
-    icon: '🥢',
+    icon: UtensilsCrossed,
     title: 'Pan-Asian & Street Classics',
     desc: 'Crispy dim sums, handmade momos, authentic street-style noodles, and signature chilli oils from scratch.',
     tag: 'Trending',
+    iconColor: 'text-rose-800',
+    iconBg: 'bg-rose-100/70 border-rose-300',
   },
   {
-    icon: '🥗',
+    icon: Leaf,
     title: 'Balanced Everyday Meals',
     desc: 'Nutritious 20-minute dinner bowls, grain & millet preparations, and family-friendly wholesome meals without compromising flavor.',
     tag: 'Essential',
+    iconColor: 'text-emerald-800',
+    iconBg: 'bg-emerald-100/70 border-emerald-300',
   },
 ] as const;
 
@@ -216,22 +233,30 @@ export default function Home() {
         <div className="container">
           <div className="features-grid">
             <div className="feature-item">
-              <div className="feature-icon bg-orange-100 text-orange-700">📹</div>
+              <div className="feature-icon bg-orange-100/80 text-orange-700">
+                <Video size={22} />
+              </div>
               <h3 className="feature-title">High-Definition Masterclasses</h3>
               <p className="feature-desc">Clear, zoomed-in pan angles so you see exact color changes, bubbling textures, and consistency.</p>
             </div>
             <div className="feature-item">
-              <div className="feature-icon bg-amber-100 text-amber-700">📄</div>
+              <div className="feature-icon bg-amber-100/80 text-amber-700">
+                <FileText size={22} />
+              </div>
               <h3 className="feature-title">Printable Chef Recipe Cards</h3>
               <p className="feature-desc">Gram-measured ingredient cards with step-by-step instructions, troubleshooting tips, and substitutions.</p>
             </div>
             <div className="feature-item">
-              <div className="feature-icon bg-stone-100 text-stone-700">📱</div>
+              <div className="feature-icon bg-stone-100/80 text-stone-700">
+                <Smartphone size={22} />
+              </div>
               <h3 className="feature-title">Kitchen-Friendly Mobile Mode</h3>
               <p className="feature-desc">Stream smoothly on standard 4G mobile phones without buffering. Keep your phone by the stove.</p>
             </div>
             <div className="feature-item">
-              <div className="feature-icon bg-emerald-100 text-emerald-700">💬</div>
+              <div className="feature-icon bg-emerald-100/80 text-emerald-700">
+                <MessageSquare size={22} />
+              </div>
               <h3 className="feature-title">Direct Culinary Support</h3>
               <p className="feature-desc">Ask recipe questions and receive guidance directly from Neha Ma&apos;am&apos;s institute team.</p>
             </div>
@@ -252,7 +277,9 @@ export default function Home() {
             {TRACKS.map((track) => (
               <div key={track.title} className="track-card">
                 <div className="track-top">
-                  <span className="track-emoji">{track.icon}</span>
+                  <div className={`track-icon-badge ${track.iconBg}`}>
+                    <track.icon size={24} className={track.iconColor} />
+                  </div>
                   <span className="track-badge">{track.tag}</span>
                 </div>
                 <h3 className="track-title">{track.title}</h3>
@@ -413,11 +440,11 @@ export default function Home() {
               </Link>
             </div>
             <div className="cta-trust-row">
-              <span>⚡ Instant access</span>
+              <span className="trust-pill"><Zap size={14} className="text-amber-400" /> Instant access</span>
               <span>•</span>
-              <span>🔒 100% Secure Razorpay</span>
+              <span className="trust-pill"><ShieldCheck size={14} className="text-emerald-400" /> 100% Secure Razorpay</span>
               <span>•</span>
-              <span>📱 Mobile optimized</span>
+              <span className="trust-pill"><Smartphone size={14} className="text-stone-300" /> Mobile optimized</span>
             </div>
           </div>
         </div>
@@ -795,11 +822,18 @@ export default function Home() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 1rem;
+          margin-bottom: 1.25rem;
         }
 
-        .track-emoji {
-          font-size: 2.25rem;
+        .track-icon-badge {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid;
+          box-shadow: 0 4px 12px rgba(194, 65, 12, 0.05);
         }
 
         .track-badge {
@@ -1235,6 +1269,12 @@ export default function Home() {
           font-size: 0.85rem;
           color: #a8a29e;
           flex-wrap: wrap;
+        }
+
+        .trust-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
         }
 
         /* ── Mobile Sticky Bar ── */

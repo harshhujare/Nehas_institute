@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/api-client';
+import { Loader2 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -298,7 +299,14 @@ export default function AdminPaymentsPage() {
             <h2 className="section-heading" style={{ margin: 0 }}>Transaction History</h2>
             {lastUpdated && (
               <span className="pay-last-updated">
-                {paymentsFetching ? '🔄 Refreshing…' : `Updated at ${lastUpdated}`}
+                {paymentsFetching ? (
+                  <>
+                    <Loader2 size={12} className="inline mr-1 animate-spin" />
+                    Refreshing…
+                  </>
+                ) : (
+                  `Updated at ${lastUpdated}`
+                )}
               </span>
             )}
           </div>

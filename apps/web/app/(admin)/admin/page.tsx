@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import apiClient from '@/lib/api-client';
+import { Users, FileText, Megaphone, Eye, Upload, Plus } from 'lucide-react';
 
 interface Stats {
   totalUsers: number;
@@ -12,10 +13,10 @@ interface Stats {
   revenueInRupees: string;
 }
 
-function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub?: string; icon: string }) {
+function StatCard({ label, value, sub, icon }: { label: string; value: string | number; sub?: string; icon: React.ReactNode }) {
   return (
     <div className="stat-card">
-      <div className="stat-icon">{icon}</div>
+      <div className="stat-icon-wrap">{icon}</div>
       <div className="stat-body">
         <div className="stat-value font-serif">{value}</div>
         <div className="stat-label">{label}</div>
@@ -26,8 +27,8 @@ function StatCard({ label, value, sub, icon }: { label: string; value: string | 
 }
 
 const QUICK_ACTIONS = [
-  { href: '/admin/notes/upload', label: 'Upload Note', icon: '⬆', desc: 'Add a new PDF to the library' },
-  { href: '/admin/announcements/new', label: 'Add Announcement', icon: '📢', desc: 'Post a new announcement or video' },
+  { href: '/admin/notes/upload', label: 'Upload Note', icon: <Upload size={18} className="text-orange-600" />, desc: 'Add a new PDF to the library' },
+  { href: '/admin/announcements/new', label: 'Add Announcement', icon: <Megaphone size={18} className="text-amber-600" />, desc: 'Post a new announcement or video' },
 ];
 
 export default function AdminDashboard() {
@@ -43,8 +44,8 @@ export default function AdminDashboard() {
   return (
     <div className="dashboard">
       <header className="admin-page-header">
-        <h1 className="admin-page-title font-serif">Dashboard</h1>
-        <p className="admin-page-desc">Platform overview and quick actions.</p>
+        <h1 className="admin-page-title font-serif">Faculty Dashboard</h1>
+        <p className="admin-page-desc">Overview of your institute metrics and student activities.</p>
       </header>
 
       {/* Stats Grid */}
@@ -53,10 +54,10 @@ export default function AdminDashboard() {
           [1, 2, 3, 4].map(i => <div key={i} className="stat-skeleton" />)
         ) : stats ? (
           <>
-            <StatCard label="Total Users" value={stats.totalUsers.toLocaleString()} icon="👥" />
-            <StatCard label="Total Notes" value={stats.totalNotes} icon="📄" />
-            <StatCard label="Active Announcements" value={stats.activeAnnouncements} icon="📢" />
-            <StatCard label="Note Views Today" value={stats.todayViews} icon="👁" />
+            <StatCard label="Total Users" value={stats.totalUsers.toLocaleString()} icon={<Users size={22} className="text-orange-600" />} />
+            <StatCard label="Total Notes" value={stats.totalNotes} icon={<FileText size={22} className="text-amber-600" />} />
+            <StatCard label="Active Announcements" value={stats.activeAnnouncements} icon={<Megaphone size={22} className="text-rose-600" />} />
+            <StatCard label="Note Views Today" value={stats.todayViews} icon={<Eye size={22} className="text-emerald-600" />} />
           </>
         ) : (
           <p style={{ color: 'var(--text-muted)' }}>Failed to load stats.</p>

@@ -8,6 +8,7 @@ import { useSecurePdf } from './useSecurePdf';
 import { PdfLoadingState } from './PdfLoadingState';
 import { PdfErrorState } from './PdfErrorState';
 import { PdfPages } from './PdfPages';
+import { Zap } from 'lucide-react';
 import './viewer.css';
 
 // Use local public/pdf.worker.min.mjs for reliable offline and fast mobile loading
@@ -161,7 +162,7 @@ export default function SecureViewer({ note, onClose }: SecureViewerProps) {
           )}
           {fromCache && fetchState.stage === 'ready' && (
             <span className="viewer-cache-badge" title="Loaded from local cache">
-              ⚡ Instant
+              <Zap size={11} className="inline mr-1" /> Instant
             </span>
           )}
         </div>

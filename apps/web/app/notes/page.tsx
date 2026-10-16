@@ -6,6 +6,7 @@ import { useInfiniteNotes, type NoteWithSubject } from '@/hooks/useNotes';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import NoteCard from '@/components/notes/NoteCard';
 import dynamic from 'next/dynamic';
+import { WifiOff, Search as SearchIcon, X } from 'lucide-react';
 
 const SecureViewer = dynamic(() => import('@/features/notes/viewer/SecureViewer'), {
   ssr: false,
@@ -179,8 +180,8 @@ export default function NotesPage() {
             aria-label="Search notes by title"
           />
           {search && (
-            <button className="notes-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
-              ✕
+            <button className="notes-search-clear flex items-center justify-center" onClick={() => setSearch('')} aria-label="Clear search">
+              <X size={14} />
             </button>
           )}
         </div>
@@ -207,18 +208,22 @@ export default function NotesPage() {
           <div className="notes-empty">
             {!isOnline ? (
               <>
-                <p style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>📶</p>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                  <WifiOff size={32} className="text-stone-400" />
+                </div>
                 <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>No cached notes</p>
                 <p>Visit this page while online to make notes available offline.</p>
               </>
             ) : search ? (
               <>
-                <p style={{ fontSize: '2rem', marginBottom: '0.75rem' }}>🔍</p>
-                <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>No results for "{search}"</p>
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}>
+                  <SearchIcon size={32} className="text-stone-400" />
+                </div>
+                <p style={{ fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-primary)' }}>No results for &ldquo;{search}&rdquo;</p>
                 <p>Try a different keyword or clear the search.</p>
               </>
             ) : (
-              <p>No notes found for this subject.</p>
+              <p>No recipe notes found for this category.</p>
             )}
           </div>
         ) : (

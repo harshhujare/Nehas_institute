@@ -12,7 +12,8 @@ import {
   CheckCircle2, 
   ArrowRight,
   Filter,
-  Play
+  Play,
+  X
 } from 'lucide-react';
 
 interface Course {
@@ -190,7 +191,7 @@ export default function CoursesCatalogPage() {
                   className="clear-search-btn"
                   aria-label="Clear search"
                 >
-                  ✕
+                  <X size={14} />
                 </button>
               )}
             </div>
@@ -222,8 +223,8 @@ export default function CoursesCatalogPage() {
             <span className="results-count">
               Showing <strong>{filteredCourses.length}</strong> {filteredCourses.length === 1 ? 'masterclass' : 'masterclasses'}
             </span>
-            <span className="all-pass-note">
-              ✓ All courses accessible on mobile &amp; tablet
+            <span className="all-pass-note flex items-center">
+              <CheckCircle2 size={13} className="text-emerald-600 inline mr-1 flex-shrink-0" /> All courses accessible on mobile &amp; tablet
             </span>
           </div>
 

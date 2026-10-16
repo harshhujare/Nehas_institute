@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, CheckCircle2 } from 'lucide-react';
 import apiClient from '@/lib/api-client';
 
 type TicketType = 'GENERAL' | 'BUG_REPORT' | 'PAYMENT_ISSUE' | 'CONTENT_QUERY';
@@ -41,20 +41,21 @@ export default function ContactForm({ onSuccess }: ContactFormProps) {
     return (
       <>
         <div className="contact-form contact-form--success">
-          <div className="contact-success-icon">✓</div>
+          <div className="contact-success-icon">
+            <CheckCircle2 size={32} />
+          </div>
           <h2 className="contact-form-title">Ticket Submitted!</h2>
-          <p className="contact-form-subtitle">We've received your request and will get back to you shortly. Check the <strong>My Tickets</strong> tab to track your reply.</p>
+          <p className="contact-form-subtitle">We&apos;ve received your request and will get back to you shortly. Check the <strong>My Tickets</strong> tab to track your reply.</p>
         </div>
         <style>{`
           .contact-form--success { text-align: center; align-items: center; padding: 2.5rem 2rem; }
           .contact-success-icon {
             width: 52px; height: 52px;
-            background: var(--success-bg);
-            color: var(--success-text);
-            border: 1px solid var(--success-border);
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
             border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.4rem; font-weight: 700;
           }
         `}</style>
       </>

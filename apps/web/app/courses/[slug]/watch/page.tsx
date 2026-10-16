@@ -20,7 +20,8 @@ import {
   Clock, 
   Sparkles, 
   X,
-  Volume2
+  Volume2,
+  AlertCircle
 } from 'lucide-react';
 
 interface Lesson {
@@ -310,7 +311,10 @@ export default function CourseWatchPage() {
               <div className="recipe-section">
                 <h4 className="recipe-subheading">Chef Neha&apos;s Golden Principles:</h4>
                 <p className="chef-tip-box">
-                  <strong>⚠️ Flame Management:</strong> Never boil the tomatoes with dry spices without cashews. The cashews release natural emulsifiers during the simmer that turn the sauce velvety without requiring cornstarch.
+                  <strong>
+                    <AlertCircle size={15} className="inline mr-1 text-amber-500" />
+                    Flame Management:
+                  </strong> Never boil the tomatoes with dry spices without cashews. The cashews release natural emulsifiers during the simmer that turn the sauce velvety without requiring cornstarch.
                 </p>
               </div>
             </div>

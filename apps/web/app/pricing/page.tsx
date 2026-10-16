@@ -17,7 +17,8 @@ import {
   Clock, 
   BookOpen,
   ArrowRight,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
 
 const FALLBACK_PLANS: readonly PlanData[] = [
@@ -190,7 +191,10 @@ export default function PricingPage() {
                 <span className="status-dot" />
                 Active Pass
               </div>
-              <span className="pass-tier-name">⭐ Unlimited Access</span>
+              <span className="pass-tier-name">
+                <Sparkles size={14} className="inline mr-1 text-amber-600" />
+                Unlimited Access
+              </span>
             </div>
 
             <div className="pass-details-box">
