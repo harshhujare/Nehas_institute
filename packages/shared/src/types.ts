@@ -138,6 +138,7 @@ export interface JwtPayload {
   userId: string;
   role: Role;
   plan: Plan;
+  planExpiresAt?: string | null;
   iat?: number;
   exp?: number;
 }

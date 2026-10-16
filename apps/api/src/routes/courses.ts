@@ -113,21 +113,22 @@ coursesRouter.get('/', async (req: Request, res: Response) => {
  * Optionally populates user enrollment and watch progress if authenticated.
  */
 coursesRouter.get('/:slugOrId', optionalAuth(), async (req: Request, res: Response) => {
-  const { slugOrId } = req.params;
+  const slugOrId = String(req.params.slugOrId);
+
+  const whereCondition = {
+    OR: [{ slug: slugOrId }, { id: slugOrId }],
+    ...(!req.user || req.user.role === 'STUDENT' ? { isPublished: true } : {}),
+  };
 
   const course = await withRetry(() =>
     prisma.course.findFirst({
-      where: {
-        OR: [{ slug: slugOrId }, { id: slugOrId }],
-        // If not admin, only show published courses
-        ...(!req.user || req.user.role === 'STUDENT' ? { isPublished: true } : {}),
-      },
+      where: whereCondition,
       include: {
         sections: {
-          orderBy: { order: 'asc' },
+          orderBy: { order: 'asc' as const },
           include: {
             lectures: {
-              orderBy: { order: 'asc' },
+              orderBy: { order: 'asc' as const },
               select: {
                 id: true,
                 sectionId: true,
@@ -264,15 +265,14 @@ coursesRouter.get('/:slugOrId', optionalAuth(), async (req: Request, res: Respon
  * Fetch the authenticated user's current progress for a course.
  */
 coursesRouter.get('/:id/progress', requireAuth(), async (req: Request, res: Response) => {
-  const { id } = req.params;
+  const id = String(req.params.id);
 
   const course = await withRetry(() =>
     prisma.course.findUnique({
       where: { id },
-      select: {
-        id: true,
+      include: {
         sections: {
-          select: {
+          include: {
             lectures: {
               select: { id: true },
             },
