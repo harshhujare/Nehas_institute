@@ -4,7 +4,6 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import useAuthStore from '@/lib/auth-store';
 import { useInfiniteNotes, type NoteWithSubject } from '@/hooks/useNotes';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
-import SubjectFilter from '@/components/notes/SubjectFilter';
 import NoteCard from '@/components/notes/NoteCard';
 import dynamic from 'next/dynamic';
 
@@ -32,7 +31,6 @@ export default function NotesPage() {
   const { user } = useAuthStore();
   const isOnline = useOnlineStatus();
 
-  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<SortKey>('newest');
   const [viewingNote, setViewingNote] = useState<NoteWithSubject | null>(null);
@@ -43,7 +41,7 @@ export default function NotesPage() {
     isFetchingNextPage,
     fetchNextPage,
     hasNextPage,
-  } = useInfiniteNotes(selectedSubject, 20, '');
+  } = useInfiniteNotes(null, 20, '');
   // ↑ search is handled client-side over loaded pages; passing '' avoids
   //   resetting the infinite query on every keystroke.
 
@@ -81,10 +79,6 @@ export default function NotesPage() {
     observer.observe(sentinel);
     return () => observer.disconnect();
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const handleSubjectSelect = (subjectId: string | null) => {
-    setSelectedSubject(subjectId);
-  };
 
   // SVG icon helper used by sort pills and track headers
   const icons = {
@@ -190,9 +184,6 @@ export default function NotesPage() {
             </button>
           )}
         </div>
-
-        {/* ── Subject filter ───────────────────────────────────────── */}
-        <SubjectFilter selectedSubject={selectedSubject} onSelect={handleSubjectSelect} />
 
         {/* ── Sort pills ───────────────────────────────────────────── */}
         <div className="sort-pills" role="group" aria-label="Sort notes">

@@ -10,9 +10,9 @@ import { PdfErrorState } from './PdfErrorState';
 import { PdfPages } from './PdfPages';
 import './viewer.css';
 
-// Use unpkg CDN to bypass Vercel .mjs serving issues. SW will cache this for offline use.
+// Use local public/pdf.worker.min.mjs for reliable offline and fast mobile loading
 if (typeof window !== 'undefined' && !pdfjsLib.GlobalWorkerOptions.workerSrc) {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 }
 
 interface SecureViewerProps {
