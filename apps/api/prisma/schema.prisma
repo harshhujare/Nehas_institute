@@ -32,6 +32,19 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum VideoStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum CourseLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+}
+
 enum AnnouncementType {
   IMAGE
   VIDEO
@@ -53,20 +66,22 @@ enum TicketStatus {
 // ─── Core Models ───────────────────────────────────────────────────────────────
 
 model User {
-  id             String          @id @default(cuid())
-  name           String
-  email          String          @unique
-  passwordHash   String?
-  googleId       String?         @unique
-  role           Role            @default(STUDENT)
-  plan           Plan            @default(FREE)
-  planExpiresAt  DateTime?
-  paidAt         DateTime?       // set once on first successful payment, never cleared
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  payments       Payment[]
-  supportTickets SupportTicket[]
-  ticketReplies  TicketReply[]
+  id              String            @id @default(cuid())
+  name            String
+  email           String            @unique
+  passwordHash    String?
+  googleId        String?           @unique
+  role            Role              @default(STUDENT)
+  plan            Plan              @default(FREE)
+  planExpiresAt   DateTime?
+  paidAt          DateTime? // set once on first successful payment, never cleared
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  payments        Payment[]
+  supportTickets  SupportTicket[]
+  ticketReplies   TicketReply[]
+  enrollments     Enrollment[]
+  lectureProgress LectureProgress[]
 }
 
 model Payment {
@@ -75,20 +90,21 @@ model Payment {
   user              User          @relation(fields: [userId], references: [id])
   razorpayOrderId   String        @unique
   razorpayPaymentId String?
-  amount            Int           // in paise (1 INR = 100 paise)
+  amount            Int // in paise (1 INR = 100 paise)
   status            PaymentStatus @default(PENDING)
-  planDuration      Int?          // days (e.g. 30, 180, 365) — null for course purchases
-  productType       String?       // 'PLAN' | 'COURSE' — null = legacy PLAN
-  courseId          String?       // FK to Course — null for plan purchases
+  planDuration      Int? // days (e.g. 30, 180, 365) — null for course purchases
+  productType       String? // 'PLAN' | 'COURSE' — null = legacy PLAN
+  courseId          String? // FK to Course — null for plan purchases
+  course            Course?       @relation("CoursePayments", fields: [courseId], references: [id], onDelete: SetNull)
   createdAt         DateTime      @default(now())
 }
 
 model PlanConfig {
   id           String   @id @default(cuid())
   planDuration Int      @unique // days: 30 | 180 | 365
-  price        Int              // price in paise (e.g. 49900 = ₹499)
-  label        String           // display name (e.g. "All-Access Pass")
-  description  String?          // optional marketing copy shown on pricing page
+  price        Int // price in paise (e.g. 49900 = ₹499)
+  label        String // display name (e.g. "All-Access Pass")
+  description  String? // optional marketing copy shown on pricing page
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -102,12 +118,14 @@ model Note {
   id           String   @id @default(cuid())
   title        String
   description  String?
-  fileKey      String   // AWS S3 object key — NEVER expose to client
+  fileKey      String // AWS S3 / R2 object key — NEVER expose to client
   isPaid       Boolean  @default(false)
   pageCount    Int?
-  thumbnailKey String?  // S3 key of thumbnail image (optional)
-  courseId     String?  // optional: attach to a course
-  lectureId    String?  // optional: attach to a lecture
+  thumbnailKey String? // S3 key of thumbnail image (optional)
+  courseId     String? // optional: attach to a course
+  course       Course?  @relation("CourseNotes", fields: [courseId], references: [id], onDelete: SetNull)
+  lectureId    String? // optional: attach to a lecture
+  lecture      Lecture? @relation("LectureNotes", fields: [lectureId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -122,8 +140,8 @@ model Announcement {
   title       String
   description String?
   type        AnnouncementType @default(IMAGE)
-  youtubeUrl  String?          // YouTube video URL (if type = VIDEO)
-  imageKey    String?          // S3 key for announcement image (optional)
+  youtubeUrl  String? // YouTube video URL (if type = VIDEO)
+  imageKey    String? // S3 key for announcement image (optional)
   isActive    Boolean          @default(true)
   order       Int              @default(0)
   createdAt   DateTime         @default(now())
@@ -147,21 +165,21 @@ model FAQ {
 }
 
 model SupportTicket {
-  id        String        @id @default(cuid())
-  type      TicketType
-  status    TicketStatus  @default(OPEN)
-  subject   String
-  message   String
+  id      String       @id @default(cuid())
+  type    TicketType
+  status  TicketStatus @default(OPEN)
+  subject String
+  message String
 
   paymentId String?
   orderId   String?
 
-  userId    String
-  user      User          @relation(fields: [userId], references: [id])
-  replies   TicketReply[]
+  userId  String
+  user    User          @relation(fields: [userId], references: [id])
+  replies TicketReply[]
 
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
   @@index([status])
@@ -169,15 +187,106 @@ model SupportTicket {
 }
 
 model TicketReply {
-  id           String        @id @default(cuid())
+  id           String  @id @default(cuid())
   message      String
-  isStaffReply Boolean       @default(false)
+  isStaffReply Boolean @default(false)
 
-  ticketId     String
-  ticket       SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  ticketId String
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
 
-  authorId     String
-  author       User          @relation(fields: [authorId], references: [id])
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
 
-  createdAt    DateTime      @default(now())
+  createdAt DateTime @default(now())
+}
+
+// ─── Course & Video Layer ──────────────────────────────────────────────────────
+
+model Course {
+  id               String      @id @default(cuid())
+  slug             String      @unique
+  title            String
+  description      String      @db.Text
+  shortDescription String?
+  category         String // e.g. "Regional Indian", "Baking & Pastry", "Street Classics"
+  level            CourseLevel @default(BEGINNER)
+  thumbnailKey     String? // R2 / S3 object key
+  previewVideoId   String? // Bunny Video GUID for public trailer (optional)
+  priceInPaise     Int // e.g. 49900 = ₹499 (0 = free course)
+  isPublished      Boolean     @default(false)
+  order            Int         @default(0)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  sections    Section[]
+  enrollments Enrollment[]
+  payments    Payment[]    @relation("CoursePayments")
+  resources   Note[]       @relation("CourseNotes")
+
+  @@index([isPublished, category])
+  @@index([slug])
+}
+
+model Section {
+  id        String    @id @default(cuid())
+  courseId  String
+  title     String
+  order     Int       @default(0)
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lectures  Lecture[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([courseId, order])
+}
+
+model Lecture {
+  id            String            @id @default(cuid())
+  sectionId     String
+  title         String
+  description   String?           @db.Text
+  order         Int               @default(0)
+  videoId       String? // Bunny Video GUID — NEVER sent in public API
+  durationSec   Int?              @default(0)
+  status        VideoStatus       @default(UPLOADING)
+  isFreePreview Boolean           @default(false)
+  section       Section           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  progress      LectureProgress[]
+  resources     Note[]            @relation("LectureNotes")
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([sectionId, order])
+}
+
+// ─── Enrollment & Progress Models ──────────────────────────────────────────────
+
+model Enrollment {
+  id        String    @id @default(cuid())
+  userId    String
+  courseId  String
+  paymentId String?   @unique
+  expiresAt DateTime? // null = lifetime access
+  createdAt DateTime  @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+model LectureProgress {
+  userId      String
+  lectureId   String
+  positionSec Int      @default(0)
+  completed   Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@id([userId, lectureId])
+  @@index([userId])
 }
