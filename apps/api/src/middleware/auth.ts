@@ -82,6 +82,27 @@ export function requireAuth(roles?: Role[], plan?: Plan) {
   };
 }
 
+/**
+ * optionalAuth middleware
+ * - If Bearer token is provided and valid, populates req.user
+ * - Never returns 401; unauthenticated requests proceed with req.user = undefined
+ */
+export function optionalAuth() {
+  return (req: Request, _res: Response, next: NextFunction) => {
+    try {
+      const authHeader = req.headers.authorization;
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.slice(7);
+        const payload = verifyAccessToken(token);
+        req.user = payload;
+      }
+    } catch {
+      // Ignore invalid/expired tokens for optional endpoints
+    }
+    next();
+  };
+}
+
 export const ROLE_LEVEL: Record<Role, number> = {
   STUDENT: 0,
   SUPPORT_MANAGER: 1,

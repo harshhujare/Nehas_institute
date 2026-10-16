@@ -8,6 +8,7 @@ import { adminRouter } from './routes/admin';
 import { announcementsRouter } from './routes/announcements';
 import { supportRouter } from './routes/support';
 import { faqsRouter } from './routes/faqs';
+import { coursesRouter } from './routes/courses';
 import { errorHandler } from './middleware/error';
 import { captureRawBody } from './middleware/rawBody';
 import { prisma, withRetry } from './lib/prisma';
@@ -105,6 +106,7 @@ app.use('/api/payments', paymentsRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/support', supportRouter);
 app.use('/api/faqs', faqsRouter);
+app.use('/api/courses', coursesRouter);
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 app.use(errorHandler);
