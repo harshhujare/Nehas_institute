@@ -38,7 +38,7 @@ export default function PricingPage() {
         duration: p.planDuration as 30 | 180 | 365,
         label: p.label,
         price: `₹${p.price / 100}`,
-        period: 'All premium notes',
+        period: 'All courses & guides',
         badge: 'Best Value',
         description: p.description || undefined,
       }))

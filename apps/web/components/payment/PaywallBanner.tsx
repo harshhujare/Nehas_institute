@@ -22,7 +22,7 @@ export default function PaywallBanner() {
     <>
       <div className="paywall-banner" role="region" aria-label="Premium content locked">
         <Lock size={28} className="paywall-icon" aria-hidden="true" />
-        <p className="paywall-text">This note requires a paid subscription</p>
+        <p className="paywall-text">This content requires an All-Access Pass or course enrollment</p>
         <button
           className="paywall-btn"
           onClick={(e) => {

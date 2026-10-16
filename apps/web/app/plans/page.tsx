@@ -40,7 +40,7 @@ export default function PlansPage() {
         duration: p.planDuration as 30 | 180 | 365,
         label: p.label,
         price: `₹${p.price / 100}`,
-        period: 'All premium notes',
+        period: 'All courses & guides',
         badge: 'Best Value',
         description: p.description || undefined,
       }))
@@ -90,7 +90,7 @@ export default function PlansPage() {
   if (checkoutState.status === 'awaiting_payment') statusText = 'Complete payment…';
   if (checkoutState.status === 'verifying') statusText = 'Verifying…';
   if (checkoutState.status === 'polling') statusText = 'Confirming…';
-  if (checkoutState.status === 'refreshing_token') statusText = 'Unlocking notes…';
+  if (checkoutState.status === 'refreshing_token') statusText = 'Unlocking courses…';
   if (!user) statusText = 'Login to Subscribe';
   if (isActivePaid) statusText = 'Plan Active';
 

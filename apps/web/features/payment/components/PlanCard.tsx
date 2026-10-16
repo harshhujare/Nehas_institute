@@ -38,19 +38,19 @@ export default function PlanCard({ plan, isLoading, disabled, onSelect, statusTe
       <ul className="plan-features">
         <li>
           <CheckIcon />
-          <span>Access to all premium notes</span>
+          <span>All video masterclasses & lectures</span>
         </li>
         <li>
           <CheckIcon />
-          <span>High-quality PDF downloads</span>
+          <span>Printable chef recipe cards & guides</span>
         </li>
         <li>
           <CheckIcon />
-          <span>Bilingual explanations (Marathi & English)</span>
+          <span>Step-by-step technique breakdowns</span>
         </li>
         <li>
           <CheckIcon />
-          <span>Valid for {plan.period}</span>
+          <span>Access valid for {plan.period}</span>
         </li>
       </ul>
 

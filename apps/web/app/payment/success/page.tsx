@@ -116,9 +116,9 @@ function PaymentSuccessContent() {
         {/* What's unlocked */}
         <ul className="success-benefits" aria-label="What you've unlocked">
           {[
-            'All premium TET study notes',
-            'High-quality PDF downloads',
-            'Bilingual notes (Marathi & English)',
+            'Unlimited access to all cooking video masterclasses',
+            'Chef-curated printable recipe cards & technique guides',
+            'Step-by-step culinary instruction & tips',
           ].map((benefit) => (
             <li key={benefit} className="success-benefit-item">
               <span className="benefit-dot" aria-hidden="true" />
@@ -129,12 +129,12 @@ function PaymentSuccessContent() {
 
         {/* CTA */}
         <button
-          id="explore-notes-btn"
+          id="start-learning-btn"
           className="success-cta"
-          onClick={() => router.push('/notes')}
-          aria-label="Go to study notes"
+          onClick={() => router.push('/')}
+          aria-label="Start cooking masterclasses"
         >
-          Explore notes
+          Start Cooking Now
           <svg
             width="18"
             height="18"

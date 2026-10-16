@@ -6,13 +6,13 @@
   <title>You're Offline — Neha's Institute</title>
   <style>
     :root {
-      --bg: #0f0f13;
-      --surface: #1a1a24;
-      --border: rgba(255,255,255,0.08);
-      --text: #f1f5f9;
-      --muted: #94a3b8;
-      --accent: #6366f1;
-      --accent-soft: rgba(99,102,241,0.15);
+      --bg: #1c1917;
+      --surface: #292524;
+      --border: rgba(255,255,255,0.1);
+      --text: #f5f5f4;
+      --muted: #a8a29e;
+      --accent: #ea580c;
+      --accent-soft: rgba(234,88,12,0.18);
     }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -138,12 +138,12 @@
 
     <h1>You're Offline</h1>
     <p>No internet connection detected.</p>
-    <p>Notes you've already opened are still available — go back and open them from the Notes page.</p>
+    <p>Recipe guides and outlines you&apos;ve already opened remain available offline.</p>
 
     <div class="divider"></div>
 
     <p class="tip">
-      <strong>Tip:</strong> Open any note while online to make it available offline automatically. The PDF is saved to your device the first time you view it.
+      <strong>Kitchen Tip:</strong> Open your recipe notes while connected to Wi-Fi to keep them ready for reference at your kitchen station anytime.
     </p>
 
     <button class="retry-btn" onclick="window.location.reload()">
@@ -156,17 +156,17 @@
 
     <div class="divider"></div>
 
-    <p class="tip" style="margin-bottom: 1rem;">Or go to a page you've visited before:</p>
+    <p class="tip" style="margin-bottom: 1rem;">Or return to cached pages:</p>
     <div class="nav-links">
       <a href="/notes" class="nav-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
           <polyline points="14 2 14 8 20 8"/>
         </svg>
-        My Notes
+        Recipe Notes
       </a>
       <a href="/" class="nav-link">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
           <polyline points="9 22 9 12 15 12 15 22"/>
         </svg>
