@@ -22,6 +22,7 @@ import useAuthStore from '@/lib/auth-store';
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', icon: <LayoutDashboard size={18} />, exact: true, roles: ['SUPER_ADMIN', 'CONTENT_MANAGER'] },
+  { href: '/admin/courses', label: 'Courses & Video', icon: <BookOpen size={18} />, exact: false, roles: ['SUPER_ADMIN', 'CONTENT_MANAGER'] },
   { href: '/admin/support', label: 'Support Inbox', icon: <LifeBuoy size={18} />, exact: true, roles: ['SUPER_ADMIN', 'CONTENT_MANAGER', 'SUPPORT_MANAGER'] },
   { href: '/admin/support/faqs', label: 'Manage FAQs', icon: <HelpCircle size={18} />, exact: false, roles: ['SUPER_ADMIN', 'CONTENT_MANAGER', 'SUPPORT_MANAGER'] },
   { href: '/admin/announcements', label: 'Announcements', icon: <Megaphone size={18} />, exact: false, roles: ['SUPER_ADMIN', 'CONTENT_MANAGER'] },

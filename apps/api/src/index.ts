@@ -10,6 +10,9 @@ import { supportRouter } from './routes/support';
 import { faqsRouter } from './routes/faqs';
 import { coursesRouter } from './routes/courses';
 import { lecturesRouter } from './routes/lectures';
+import { adminCoursesRouter } from './routes/admin/courses';
+import { bunnyWebhookRouter } from './routes/webhooks/bunny';
+import { reconcileRouter } from './routes/internal/reconcile';
 import { errorHandler } from './middleware/error';
 import { captureRawBody } from './middleware/rawBody';
 import { prisma, withRetry } from './lib/prisma';
@@ -40,9 +43,9 @@ app.use(cors({
 
 // ─── Webhook raw body capture ──────────────────────────────────────────────────
 // Must be registered BEFORE express.json() so the raw bytes are preserved.
-// Razorpay computes HMAC over the exact bytes it sent; re-serializing with
-// JSON.stringify after parsing would produce a different string → HMAC mismatch.
+// Razorpay and Bunny compute HMAC over the exact bytes sent.
 app.use('/api/payments/webhook', captureRawBody);
+app.use('/api/webhooks/bunny', captureRawBody);
 
 app.use(express.json());
 app.use(cookieParser());
@@ -109,6 +112,10 @@ app.use('/api/support', supportRouter);
 app.use('/api/faqs', faqsRouter);
 app.use('/api/courses', coursesRouter);
 app.use('/api/lectures', lecturesRouter);
+app.use('/api/admin/courses', adminCoursesRouter);
+app.use('/api/webhooks/bunny', bunnyWebhookRouter);
+app.use('/api/internal/reconcile', reconcileRouter);
+app.use('/internal/reconcile', reconcileRouter);
 
 // ─── Error handler ────────────────────────────────────────────────────────────
 app.use(errorHandler);

@@ -29,9 +29,24 @@ export const CreateNoteSchema = z.object({
 });
 
 // ─── Payments ─────────────────────────────────────────────────────────────────
-export const CreateOrderSchema = z.object({
-  planDuration: z.enum(['30', '180', '365']), // days as string from form
+// Backward compatible: omitted productType defaults to PLAN
+export const CreatePlanOrderSchema = z.object({
+  productType: z.literal('PLAN').optional().default('PLAN'),
+  planDuration: z.enum(['30', '180', '365']),
 });
+
+export const CreateCourseOrderSchema = z.object({
+  productType: z.literal('COURSE'),
+  courseId: z.string().min(1),
+});
+
+// createOrder accepts either shape; missing productType => PLAN (backward compat)
+export const CreateOrderSchema = z.union([
+  CreateCourseOrderSchema,
+  CreatePlanOrderSchema,
+  // Legacy: no productType at all => PLAN
+  z.object({ planDuration: z.enum(['30', '180', '365']) }),
+]);
 
 export const VerifyPaymentSchema = z.object({
   razorpayOrderId: z.string(),
@@ -65,6 +80,18 @@ export const CreateFAQSchema = z.object({
 });
 
 export const UpdateFAQSchema = CreateFAQSchema.partial();
+
+// ─── Admin Enrollment Management ─────────────────────────────────────────────
+export const AdminEnrollmentGrantSchema = z.object({
+  userId: z.string().min(1),
+  courseId: z.string().min(1),
+  reason: z.string().min(2).max(500),
+  expiresAt: z.string().datetime().optional(), // ISO string
+});
+
+export const AdminEnrollmentRevokeSchema = z.object({
+  reason: z.string().min(2).max(500),
+});
 
 // ─── Courses & Curriculum ─────────────────────────────────────────────────────
 export const CourseQuerySchema = z.object({
@@ -126,6 +153,8 @@ export type CreateTicketInput = z.infer<typeof CreateTicketSchema>;
 export type ReplyTicketInput = z.infer<typeof ReplyTicketSchema>;
 export type CreateFAQInput = z.infer<typeof CreateFAQSchema>;
 export type UpdateFAQInput = z.infer<typeof UpdateFAQSchema>;
+export type CreateCourseOrderInput = z.infer<typeof CreateCourseOrderSchema>;
+export type CreatePlanOrderInput = z.infer<typeof CreatePlanOrderSchema>;
 export type CourseQueryInput = z.infer<typeof CourseQuerySchema>;
 export type CreateCourseInput = z.infer<typeof CreateCourseSchema>;
 export type UpdateCourseInput = z.infer<typeof UpdateCourseSchema>;
@@ -134,4 +163,6 @@ export type UpdateSectionInput = z.infer<typeof UpdateSectionSchema>;
 export type CreateLectureInput = z.infer<typeof CreateLectureSchema>;
 export type UpdateLectureInput = z.infer<typeof UpdateLectureSchema>;
 export type UpdateLectureProgressInput = z.infer<typeof UpdateLectureProgressSchema>;
+export type AdminEnrollmentGrantInput = z.infer<typeof AdminEnrollmentGrantSchema>;
+export type AdminEnrollmentRevokeInput = z.infer<typeof AdminEnrollmentRevokeSchema>;
 

@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import useAuthStore from '@/lib/auth-store';
+import { apiClient } from '@/lib/api-client';
+import { loadRazorpayScript } from '@/features/payment/utils/razorpay';
 import { 
   ChefHat, 
   Play, 
@@ -108,6 +110,10 @@ export default function CourseDetailPage() {
   const { user } = useAuthStore();
   const [openModuleIds, setOpenModuleIds] = useState<string[]>(['m1', 'm2', 's0', 's1']);
 
+  const router = useRouter();
+  const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+
   const { data: course, isLoading } = useCourse(slug);
 
   const isPaid = user?.plan === 'PAID';
@@ -115,6 +121,92 @@ export default function CourseDetailPage() {
   const isExpired = planExpiresAt ? planExpiresAt < new Date() : false;
   const isActivePaid = isPaid && !isExpired;
   const isEnrolled = isActivePaid || Boolean(course?.isEnrolled) || user?.role !== 'STUDENT';
+
+  const priceInRupees = course?.priceInPaise !== undefined ? Math.round(course.priceInPaise / 100) : 499;
+  const isFreeCourse = course?.priceInPaise === 0;
+
+  const handleEnrollFree = async () => {
+    if (!user) {
+      router.push(`/login?redirect=/courses/${slug}`);
+      return;
+    }
+    if (!course) return;
+
+    try {
+      setIsProcessingPurchase(true);
+      setPurchaseError(null);
+      await apiClient.post(`/api/courses/${course.id}/enroll`);
+      router.push(`/courses/${slug}/watch`);
+    } catch (err: any) {
+      setPurchaseError(err.response?.data?.error || 'Failed to enroll in free course.');
+    } finally {
+      setIsProcessingPurchase(false);
+    }
+  };
+
+  const handleBuyCourse = async () => {
+    if (!user) {
+      router.push(`/login?redirect=/courses/${slug}`);
+      return;
+    }
+    if (!course) return;
+
+    try {
+      setIsProcessingPurchase(true);
+      setPurchaseError(null);
+
+      const isLoaded = await loadRazorpayScript();
+      if (!isLoaded) {
+        throw new Error('Razorpay SDK failed to load. Please check your connection.');
+      }
+
+      const { data: res } = await apiClient.post('/api/payments/create-order', {
+        productType: 'COURSE',
+        courseId: course.id,
+      });
+      const orderData = res.data;
+
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency || 'INR',
+        name: "Neha's Culinary Institute",
+        description: course.title,
+        order_id: orderData.orderId,
+        prefill: {
+          name: user.name || '',
+          email: user.email || '',
+        },
+        theme: {
+          color: '#d97706',
+        },
+        handler: async (response: any) => {
+          try {
+            await apiClient.post('/api/payments/verify', {
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+            router.push(`/courses/${slug}/watch`);
+          } catch {
+            setPurchaseError('Payment received. Access will appear shortly.');
+            router.push(`/courses/${slug}/watch`);
+          }
+        },
+        modal: {
+          ondismiss: () => {
+            setIsProcessingPurchase(false);
+          },
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+    } catch (err: any) {
+      setPurchaseError(err.response?.data?.error || err.message || 'Payment initiation failed.');
+      setIsProcessingPurchase(false);
+    }
+  };
 
   // Adapt live backend sections or fallback
   const liveModules = course?.sections && course.sections.length > 0
@@ -204,8 +296,14 @@ export default function CourseDetailPage() {
                 </div>
                 <div className="teaser-card-body">
                   <div className="price-tag-row">
-                    <span className="pass-price">Included in All-Access Pass</span>
-                    <span className="sub-cost">₹499 (All Courses)</span>
+                    {isFreeCourse ? (
+                      <span className="pass-price text-emerald-600 font-bold">100% Free Masterclass</span>
+                    ) : (
+                      <>
+                        <span className="pass-price">₹{priceInRupees}</span>
+                        <span className="sub-cost">or ₹499 (All-Access Pass)</span>
+                      </>
+                    )}
                   </div>
 
                   <div className="teaser-action-buttons">
@@ -218,10 +316,30 @@ export default function CourseDetailPage() {
                       <Link href={`/courses/${slug}/watch`} className="btn-start-course">
                         Start Full Masterclass →
                       </Link>
+                    ) : isFreeCourse ? (
+                      <button
+                        onClick={handleEnrollFree}
+                        disabled={isProcessingPurchase}
+                        className="btn-start-course cursor-pointer w-full text-center"
+                      >
+                        {isProcessingPurchase ? 'Enrolling…' : 'Enroll Free (Instant Access) →'}
+                      </button>
                     ) : (
-                      <Link href="/pricing" className="btn-unlock-pass">
-                        Unlock with Chef Pass (₹499) →
-                      </Link>
+                      <div className="space-y-2">
+                        <button
+                          onClick={handleBuyCourse}
+                          disabled={isProcessingPurchase}
+                          className="btn-start-course cursor-pointer w-full text-center"
+                        >
+                          {isProcessingPurchase ? 'Preparing Checkout…' : `Buy Masterclass — ₹${priceInRupees} →`}
+                        </button>
+                        <Link href="/pricing" className="btn-unlock-pass text-center block">
+                          Unlock with Chef Pass (₹499) →
+                        </Link>
+                      </div>
+                    )}
+                    {purchaseError && (
+                      <p className="text-xs text-rose-600 text-center font-medium mt-1">{purchaseError}</p>
                     )}
                   </div>
 

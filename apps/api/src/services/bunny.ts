@@ -20,6 +20,8 @@ export interface VideoProvider {
   createVideoRecord(title: string): Promise<{ videoId: string }>;
   generateTusUploadAuth(videoId: string): Promise<TusUploadAuth>;
   getVideoStatus(videoId: string): Promise<{ status: VideoStatus; durationSec: number }>;
+  deleteVideo(videoId: string): Promise<void>;
+  verifyWebhookSignature(rawBody: string, signature: string, videoId?: string): boolean;
 }
 
 // ─── Bunny Stream Production Provider ─────────────────────────────────────────
@@ -137,6 +139,47 @@ export class BunnyStreamProvider implements VideoProvider {
       durationSec: data.length || 0,
     };
   }
+
+  /**
+   * Deletes a video record and its files from Bunny Stream library.
+   */
+  async deleteVideo(videoId: string): Promise<void> {
+    if (!this.isConfigured() || !videoId) return;
+    const url = `https://video.bunnycdn.com/library/${this.libraryId}/videos/${videoId}`;
+    try {
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          AccessKey: this.apiKey,
+        },
+      });
+      if (!res.ok && res.status !== 404) {
+        console.warn(`[BunnyStream] Failed to delete video ${videoId}: ${res.status}`);
+      }
+    } catch (err: any) {
+      console.warn(`[BunnyStream] Error deleting video ${videoId}:`, err.message);
+    }
+  }
+
+  /**
+   * Verifies Bunny Stream webhook authenticity.
+   */
+  verifyWebhookSignature(rawBody: string, signature: string, videoId?: string): boolean {
+    const webhookKey = process.env.BUNNY_WEBHOOK_KEY;
+    if (!webhookKey) {
+      // In development or when webhook secret is not explicitly configured, accept
+      return process.env.NODE_ENV !== 'production';
+    }
+    if (videoId) {
+      const expected = crypto.createHash('sha256').update(`${this.libraryId}${webhookKey}${videoId}`).digest('hex');
+      if (expected.toLowerCase() === signature.toLowerCase()) return true;
+    }
+    const hmacExpected = crypto.createHmac('sha256', webhookKey).update(rawBody).digest('hex');
+    if (hmacExpected.toLowerCase() === signature.toLowerCase()) return true;
+
+    return webhookKey === signature;
+  }
 }
 
 // ─── Mock Video Provider (Local Dev / Fallback) ────────────────────────────────
@@ -149,7 +192,6 @@ export class MockVideoProvider implements VideoProvider {
   async generateSignedEmbedUrl(options: VideoSignedUrlOptions): Promise<string> {
     const { videoId, expiresInSeconds = 14400 } = options;
     const expires = Math.floor(Date.now() / 1000) + expiresInSeconds;
-    // Embed a clean culinary video preview or test stream player
     return `https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mockVideoId=${encodeURIComponent(videoId)}&expires=${expires}`;
   }
 
@@ -174,6 +216,14 @@ export class MockVideoProvider implements VideoProvider {
       status: 'READY',
       durationSec: 920,
     };
+  }
+
+  async deleteVideo(_videoId: string): Promise<void> {
+    // no-op in mock
+  }
+
+  verifyWebhookSignature(_rawBody: string, _signature: string, _videoId?: string): boolean {
+    return true;
   }
 }
 

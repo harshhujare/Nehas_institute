@@ -45,6 +45,12 @@ enum CourseLevel {
   ADVANCED
 }
 
+enum EnrollmentSource {
+  PURCHASE
+  FREE
+  ADMIN_GRANT
+}
+
 enum AnnouncementType {
   IMAGE
   VIDEO
@@ -82,6 +88,7 @@ model User {
   ticketReplies   TicketReply[]
   enrollments     Enrollment[]
   lectureProgress LectureProgress[]
+  playbackGrants  PlaybackGrant[]
 }
 
 model Payment {
@@ -214,6 +221,7 @@ model Course {
   previewVideoId   String? // Bunny Video GUID for public trailer (optional)
   priceInPaise     Int // e.g. 49900 = ₹499 (0 = free course)
   isPublished      Boolean     @default(false)
+  archivedAt       DateTime?   // soft-delete: hides from catalog but keeps enrollments/payments (Hard Rule #8)
   order            Int         @default(0)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
@@ -241,20 +249,22 @@ model Section {
 }
 
 model Lecture {
-  id            String            @id @default(cuid())
-  sectionId     String
-  title         String
-  description   String?           @db.Text
-  order         Int               @default(0)
-  videoId       String? // Bunny Video GUID — NEVER sent in public API
-  durationSec   Int?              @default(0)
-  status        VideoStatus       @default(UPLOADING)
-  isFreePreview Boolean           @default(false)
-  section       Section           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
-  progress      LectureProgress[]
-  resources     Note[]            @relation("LectureNotes")
-  createdAt     DateTime          @default(now())
-  updatedAt     DateTime          @updatedAt
+  id              String            @id @default(cuid())
+  sectionId       String
+  title           String
+  description     String?           @db.Text
+  order           Int               @default(0)
+  videoId         String?           // Bunny Video GUID — NEVER sent in public API
+  pendingVideoId  String?           // new Bunny video during replace-video flow (swap on READY)
+  durationSec     Int?              @default(0)
+  status          VideoStatus       @default(UPLOADING)
+  isFreePreview   Boolean           @default(false)
+  section         Section           @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  progress        LectureProgress[]
+  resources       Note[]            @relation("LectureNotes")
+  playbackGrants  PlaybackGrant[]
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@index([sectionId, order])
 }
@@ -262,12 +272,16 @@ model Lecture {
 // ─── Enrollment & Progress Models ──────────────────────────────────────────────
 
 model Enrollment {
-  id        String    @id @default(cuid())
+  id        String           @id @default(cuid())
   userId    String
   courseId  String
-  paymentId String?   @unique
-  expiresAt DateTime? // null = lifetime access
-  createdAt DateTime  @default(now())
+  paymentId String?          @unique
+  source    EnrollmentSource @default(PURCHASE) // PURCHASE | FREE | ADMIN_GRANT
+  grantedBy String?          // userId of admin who granted (ADMIN_GRANT only)
+  reason    String?          // reason for admin grant/revoke
+  expiresAt DateTime?        // null = lifetime access
+  revokedAt DateTime?        // set on refund or admin revoke — blocks access in canWatchLecture
+  createdAt DateTime         @default(now())
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   course Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -281,7 +295,7 @@ model LectureProgress {
   userId      String
   lectureId   String
   positionSec Int      @default(0)
-  completed   Boolean  @default(false)
+  completed   Boolean  @default(false) // sticky: never auto-flipped back to false (X3)
   updatedAt   DateTime @updatedAt
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -289,4 +303,39 @@ model LectureProgress {
 
   @@id([userId, lectureId])
   @@index([userId])
+}
+
+// ─── Audit & Observability ─────────────────────────────────────────────────────
+
+/// Tracks every playback URL grant for leak tracing, anomaly detection, and abuse caps.
+/// Retention: 90 days (pruned by reconciliation job).
+model PlaybackGrant {
+  id        String   @id @default(cuid())
+  userId    String
+  lectureId String
+  issuedAt  DateTime @default(now())
+  expiresAt DateTime
+  ip        String?  // request IP for anomaly detection
+  userAgent String?  // truncated UA string
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lecture Lecture @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+
+  @@index([userId, issuedAt])
+  @@index([lectureId])
+}
+
+/// Generic admin audit log for grants, revokes, curriculum changes, and system actions.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  // userId of the actor (null for system actions like webhooks)
+  action     String   // e.g. 'enrollment.grant', 'enrollment.revoke', 'course.publish', 'video.replace'
+  entityType String   // e.g. 'Enrollment', 'Course', 'Lecture', 'Payment'
+  entityId   String   // primary key of the affected entity
+  meta       Json?    // arbitrary context (reason, old/new values, etc.)
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
 }

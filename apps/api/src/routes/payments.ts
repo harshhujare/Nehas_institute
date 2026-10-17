@@ -2,7 +2,8 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { prisma, withRetry } from '../lib/prisma';
 import { requireAuth } from '../middleware/auth';
 import { createRazorpayOrder, verifyRazorpaySignature, verifyWebhookSignature, isRazorpayConfigured } from '../services/razorpay';
-import { CreateOrderSchema, VerifyPaymentSchema } from '@neha/shared';
+import { CreateOrderSchema, CreatePlanOrderSchema, CreateCourseOrderSchema, VerifyPaymentSchema } from '@neha/shared';
+import { grantAccess } from '../services/grantAccess';
 
 export const paymentsRouter = Router();
 
@@ -32,6 +33,9 @@ paymentsRouter.get('/plan-config', async (_req: Request, res: Response) => {
 
 
 // POST /api/payments/create-order
+// Backward compatible: if productType is omitted or 'PLAN', existing plan flow runs.
+// If productType === 'COURSE', creates a course purchase order.
+// Hard Rule #7: prices are computed server-side; client-supplied amounts are ignored.
 paymentsRouter.post('/create-order', requireAuth(), async (req: Request, res: Response) => {
   const parsed = CreateOrderSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -39,6 +43,125 @@ paymentsRouter.post('/create-order', requireAuth(), async (req: Request, res: Re
     return;
   }
 
+  const data = parsed.data;
+  const productType = 'productType' in data ? data.productType : 'PLAN';
+
+  if (productType === 'COURSE') {
+    // ── COURSE purchase flow ────────────────────────────────────────────────
+    const courseData = data as { productType: 'COURSE'; courseId: string };
+
+    const course = await withRetry(() =>
+      prisma.course.findUnique({
+        where: { id: courseData.courseId },
+        select: { id: true, title: true, priceInPaise: true, isPublished: true, archivedAt: true },
+      })
+    );
+
+    if (!course || !course.isPublished || course.archivedAt) {
+      res.status(404).json({ error: 'Course not found or not available for purchase' });
+      return;
+    }
+
+    // FR-P3: Free courses bypass Razorpay (Razorpay cannot create zero-amount orders)
+    if (course.priceInPaise === 0) {
+      res.status(400).json({ error: 'This is a free course. Use POST /api/courses/:id/enroll instead.' });
+      return;
+    }
+
+    // P4: Block if already enrolled (not revoked)
+    const existingEnrollment = await withRetry(() =>
+      prisma.enrollment.findUnique({
+        where: {
+          userId_courseId: { userId: req.user!.userId, courseId: course.id },
+        },
+        select: { revokedAt: true },
+      })
+    );
+
+    if (existingEnrollment && !existingEnrollment.revokedAt) {
+      res.status(409).json({ error: 'You are already enrolled in this course.' });
+      return;
+    }
+
+    // Idempotency: return existing PENDING order for same user+course within 30 minutes
+    const thirtyMinsAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const existingOrder = await prisma.payment.findFirst({
+      where: {
+        userId: req.user!.userId,
+        status: 'PENDING',
+        productType: 'COURSE',
+        courseId: course.id,
+        createdAt: { gte: thirtyMinsAgo },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (existingOrder) {
+      res.json({
+        data: {
+          orderId: existingOrder.razorpayOrderId,
+          amount: existingOrder.amount,
+          currency: 'INR',
+          keyId: process.env.RAZORPAY_KEY_ID,
+          productType: 'COURSE',
+          courseTitle: course.title,
+        },
+      });
+      return;
+    }
+
+    // Create Razorpay order — amount from DB, not client (Hard Rule #7)
+    let order: Awaited<ReturnType<typeof createRazorpayOrder>>;
+    try {
+      order = await createRazorpayOrder({
+        amount: course.priceInPaise,
+        receipt: `rcpt_${req.user!.userId.substring(0, 8)}_${Date.now()}`,
+        notes: {
+          productType: 'COURSE',
+          courseId: course.id,
+          courseTitle: course.title,
+          userId: req.user!.userId,
+        },
+      });
+    } catch (err) {
+      console.error('[create-order] Razorpay API error:', err);
+      res.status(503).json({ error: 'Payment gateway unavailable. Please try again in a moment.' });
+      return;
+    }
+
+    try {
+      await withRetry(() =>
+        prisma.payment.create({
+          data: {
+            userId: req.user!.userId,
+            razorpayOrderId: order.id,
+            amount: course.priceInPaise,
+            status: 'PENDING',
+            productType: 'COURSE',
+            courseId: course.id,
+          },
+        })
+      );
+    } catch (err) {
+      console.error('[create-order] DB error saving pending course payment:', err);
+      res.status(503).json({ error: 'Could not save order. Please try again.' });
+      return;
+    }
+
+    res.json({
+      data: {
+        orderId: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        keyId: process.env.RAZORPAY_KEY_ID,
+        productType: 'COURSE',
+        courseTitle: course.title,
+      },
+    });
+    return;
+  }
+
+  // ── PLAN purchase flow (existing behavior unchanged — Hard Rule #6) ──────
   // Block mid-plan purchase — user cannot buy again while their plan is active
   const currentUser = await prisma.user.findUnique({
     where: { id: req.user!.userId },
@@ -56,12 +179,10 @@ paymentsRouter.post('/create-order', requireAuth(), async (req: Request, res: Re
     return;
   }
 
-  const planDuration = parseInt(parsed.data.planDuration);
+  const planData = data as { planDuration: string };
+  const planDuration = parseInt(planData.planDuration);
 
   // ── Fix G: wrap planConfig fetch in withRetry() ───────────────────────────
-  // A Neon cold-start here returns null planConfig → triggers a misleading 400
-  // "Invalid plan duration" error even for a valid plan. withRetry() retries
-  // up to 3 times on transient DB connection errors (P1001, P1002, ETIMEDOUT).
   const planConfig = await withRetry(() =>
     prisma.planConfig.findFirst({ where: { planDuration, isActive: true } })
   );
@@ -95,20 +216,10 @@ paymentsRouter.post('/create-order', requireAuth(), async (req: Request, res: Re
     return;
   }
 
-  // ── Fix A: wrap createRazorpayOrder + prisma.payment.create in try/catch ──
-  // createRazorpayOrder() is a raw HTTP call to Razorpay's API. If Razorpay is
-  // down or returns a non-2xx, orders.create() throws an unhandled rejection.
-  // The global unhandledRejection handler in index.ts swallows it, no response
-  // is sent, and the frontend's AbortController fires after 20 s — showing the
-  // user an error when no order was created.
-  // prisma.payment.create is also unguarded, so a Neon transient error here
-  // would leave the user stranded mid-checkout.
   let order: Awaited<ReturnType<typeof createRazorpayOrder>>;
   try {
     order = await createRazorpayOrder({
       amount,
-      // Razorpay max receipt length is 40. CUID is 25 chars.
-      // rcpt (4) + _ (1) + short_uid (8) + _ (1) + timestamp (13) = 27 chars.
       receipt: `rcpt_${req.user!.userId.substring(0, 8)}_${Date.now()}`,
     });
   } catch (err) {
@@ -118,7 +229,6 @@ paymentsRouter.post('/create-order', requireAuth(), async (req: Request, res: Re
   }
 
   try {
-    // Use withRetry so a Neon cold-start at this exact moment doesn't orphan the order
     await withRetry(() =>
       prisma.payment.create({
         data: {
@@ -127,15 +237,12 @@ paymentsRouter.post('/create-order', requireAuth(), async (req: Request, res: Re
           amount,
           status: 'PENDING',
           planDuration,
+          productType: 'PLAN',
         },
       })
     );
   } catch (err) {
     console.error('[create-order] DB error saving pending payment:', err);
-    // The Razorpay order exists but our DB record doesn't — the order is now
-    // an orphan. This is recoverable: if the user retries, the idempotency
-    // check will NOT find a PENDING record and will create a fresh order.
-    // The orphaned Razorpay order will expire automatically (Razorpay TTL: 15 min).
     res.status(503).json({ error: 'Could not save order. Please try again.' });
     return;
   }
@@ -146,12 +253,13 @@ paymentsRouter.post('/create-order', requireAuth(), async (req: Request, res: Re
       amount: order.amount,
       currency: order.currency,
       keyId: process.env.RAZORPAY_KEY_ID,
-      planLabel,   // forward label so frontend can show correct plan name on success page
+      planLabel,
     },
   });
 });
 
 // POST /api/payments/verify
+// Uses grantAccess for idempotent access granting (system design Section 6.3)
 paymentsRouter.post('/verify', requireAuth(), async (req: Request, res: Response) => {
   const parsed = VerifyPaymentSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -174,48 +282,27 @@ paymentsRouter.post('/verify', requireAuth(), async (req: Request, res: Response
     return;
   }
 
-  // Idempotency: if already SUCCESS, don't extend expiry again
+  // Idempotency: if already SUCCESS, don't re-grant
   if (payment.status === 'SUCCESS') {
     const user = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { planExpiresAt: true } });
     res.json({ data: { message: 'Payment already verified.', planExpiresAt: user?.planExpiresAt } });
     return;
   }
 
-  // Calculate expiry from today (no stacking — user cannot buy while plan is active)
-  let planExpiresAt: Date | undefined;
-  if (payment.planDuration) {
-    planExpiresAt = new Date();
-    planExpiresAt.setDate(planExpiresAt.getDate() + payment.planDuration);
+  // Use the central grantAccess function
+  const result = await grantAccess(razorpayOrderId, razorpayPaymentId);
+
+  if (result.granted && result.payment) {
+    if (result.payment.productType === 'COURSE') {
+      res.json({ data: { message: 'Payment successful. Course access activated.', courseId: result.payment.courseId } });
+    } else {
+      const user = await prisma.user.findUnique({ where: { id: req.user!.userId }, select: { planExpiresAt: true } });
+      res.json({ data: { message: 'Payment successful. Subscription activated.', planExpiresAt: user?.planExpiresAt } });
+    }
+  } else {
+    // Already processed (race with webhook) — return success anyway
+    res.json({ data: { message: 'Payment already verified.' } });
   }
-
-  // Fetch current paidAt to avoid overwriting an earlier timestamp
-  const existingUser = await prisma.user.findUnique({
-    where: { id: req.user!.userId },
-    select: { paidAt: true },
-  });
-
-  // ── Fix B (verify side): use updateMany with a status filter for the payment row ──
-  // The webhook can race with this verify call — both may read status === 'PENDING'
-  // and both try to write SUCCESS. Using updateMany with { status: 'PENDING' } in
-  // the where clause gives CAS (compare-and-swap) semantics: exactly one writer wins,
-  // the other's updateMany matches 0 rows and is a no-op. This prevents double-writes
-  // on the payment row. The user.update is idempotent (same expiry both times).
-  await prisma.$transaction([
-    prisma.payment.updateMany({
-      where: { razorpayOrderId, status: 'PENDING' },
-      data: { razorpayPaymentId, status: 'SUCCESS' },
-    }),
-    prisma.user.update({
-      where: { id: req.user!.userId },
-      data: {
-        ...(planExpiresAt && { plan: 'PAID', planExpiresAt }),
-        // paidAt: set once on first payment, never overwritten
-        ...(existingUser?.paidAt == null && { paidAt: new Date() }),
-      },
-    }),
-  ]);
-
-  res.json({ data: { message: 'Payment successful. Subscription activated.', planExpiresAt } });
 });
 
 // POST /api/payments/webhook — Razorpay async events
@@ -237,99 +324,33 @@ paymentsRouter.post('/webhook', async (req: Request, res: Response) => {
   }
 
   const event = req.body.event;
-  // payment.captured fires for card/wallet; order.paid fires for UPI/net-banking
   const orderId = req.body.payload?.payment?.entity?.order_id
     ?? req.body.payload?.order?.entity?.id;
-
-  // Extract razorpayPaymentId from webhook payload so we can persist it.
-  // The /verify endpoint sets this when the frontend flow works; the webhook
-  // is the fallback for UPI redirect flows where the page is destroyed.
   const razorpayPaymentId: string | undefined =
     req.body.payload?.payment?.entity?.id;
 
+  // ── Payment captured / order paid ─────────────────────────────────────────
   if ((event === 'payment.captured' || event === 'order.paid') && orderId) {
     try {
-      // ── Fix E: wrap webhook DB operations in withRetry() ──────────────────
-      // prisma.ts defines withRetry() for exactly this — Neon cold-start transient
-      // errors. Without it, a brief connection drop during a burst of webhooks
-      // exhausts Razorpay's retry window and leaves payments PENDING permanently.
-      // withRetry() retries internally on transient errors so the try/catch only
-      // sees real permanent failures.
       await withRetry(async () => {
-        // ── Fix B (webhook side): use updateMany with status: 'PENDING' filter ──
-        // The /verify endpoint races with this webhook — both may read PENDING and
-        // both try to write SUCCESS. updateMany with { status: 'PENDING' } gives
-        // CAS semantics: only one writer transitions the row, the other matches 0
-        // rows and is a no-op. This replaces the old findUnique + update pattern
-        // which had a TOCTOU gap between the read and the write.
-        //
-        // ── Fix F (capture path): updateMany instead of findUnique + update ──
-        // Combined with the payment.failed branch also using updateMany (below),
-        // both capture and fail paths are now fully atomic by CAS semantics —
-        // no read-then-write race between the two event types.
-        const result = await prisma.payment.updateMany({
-          where: { razorpayOrderId: orderId, status: 'PENDING' },
-          data: {
-            status: 'SUCCESS',
-            // Persist the payment ID from the webhook so reconciliation queries
-            // work even when the frontend verify flow never completed (e.g. UPI
-            // redirect on Android destroys the page before handler() fires).
-            ...(razorpayPaymentId && { razorpayPaymentId }),
-          },
-        });
-
-        // Only update the user if we actually transitioned the payment row.
-        // If result.count === 0, another writer already set it to SUCCESS.
-        if (result.count > 0) {
-          // Re-fetch planDuration — needed to compute the correct expiry
-          const payment = await prisma.payment.findUnique({
-            where: { razorpayOrderId: orderId },
-            select: { planDuration: true, userId: true },
-          });
-
-          if (payment) {
-            let planExpiresAt: Date | undefined;
-            if (payment.planDuration) {
-              planExpiresAt = new Date();
-              planExpiresAt.setDate(planExpiresAt.getDate() + payment.planDuration);
-            }
-
-            const existingUser = await prisma.user.findUnique({
-              where: { id: payment.userId },
-              select: { paidAt: true },
-            });
-
-            await prisma.user.update({
-              where: { id: payment.userId },
-              data: {
-                ...(planExpiresAt && { plan: 'PAID', planExpiresAt }),
-                ...(existingUser?.paidAt == null && { paidAt: new Date() }),
-              },
-            });
-
-            console.log(`[Webhook] Payment ${orderId} → SUCCESS via ${event}`);
-          }
+        const result = await grantAccess(orderId, razorpayPaymentId);
+        if (result.granted) {
+          console.log(`[Webhook] Payment ${orderId} → SUCCESS via ${event}`);
         } else {
           console.log(`[Webhook] Payment ${orderId} already SUCCESS (skipped) via ${event}`);
         }
       });
     } catch (err) {
       console.error('[Webhook] DB error processing payment event:', err);
-      // Return 500 for permanent/unrecoverable errors → Razorpay will retry.
-      // withRetry() already exhausted retries for transient errors before throwing here.
       res.status(500).json({ error: 'Webhook processing failed — will retry' });
       return;
     }
   }
 
+  // ── Payment failed ────────────────────────────────────────────────────────
   if (event === 'payment.failed' && orderId) {
     try {
       await withRetry(() =>
-        // ── Fix F (failed path): updateMany is already CAS-safe ───────────────
-        // If payment.captured arrives concurrently, its updateMany transitions to
-        // SUCCESS first. This updateMany then matches 0 rows (status is already
-        // SUCCESS, not PENDING) and is a no-op — preventing a captured payment
-        // from being incorrectly marked FAILED.
         prisma.payment.updateMany({
           where: { razorpayOrderId: orderId, status: 'PENDING' },
           data: { status: 'FAILED' },
@@ -337,6 +358,84 @@ paymentsRouter.post('/webhook', async (req: Request, res: Response) => {
       );
     } catch (err) {
       console.error('[Webhook] DB error processing payment.failed event:', err);
+      res.status(500).json({ error: 'Webhook processing failed — will retry' });
+      return;
+    }
+  }
+
+  // ── Refund (FR-P4): full refund revokes enrollment, partial refund ignored ──
+  if (event === 'refund.created' && razorpayPaymentId) {
+    try {
+      const refundAmount = req.body.payload?.refund?.entity?.amount;
+
+      // Find the payment by razorpayPaymentId
+      const payment = await withRetry(() =>
+        prisma.payment.findFirst({
+          where: { razorpayPaymentId },
+          select: { id: true, userId: true, amount: true, productType: true, courseId: true, razorpayOrderId: true },
+        })
+      );
+
+      if (payment) {
+        const isFullRefund = refundAmount >= payment.amount;
+
+        if (isFullRefund) {
+          // Mark payment as refunded
+          await withRetry(() =>
+            prisma.payment.updateMany({
+              where: { id: payment.id, status: 'SUCCESS' },
+              data: { status: 'REFUNDED' },
+            })
+          );
+
+          if (payment.productType === 'COURSE' && payment.courseId) {
+            // Set revokedAt on the enrollment (Section 6.6)
+            await withRetry(() =>
+              prisma.enrollment.updateMany({
+                where: {
+                  userId: payment.userId,
+                  courseId: payment.courseId!,
+                  revokedAt: null,
+                },
+                data: { revokedAt: new Date() },
+              })
+            );
+
+            await withRetry(() =>
+              prisma.auditLog.create({
+                data: {
+                  action: 'enrollment.revoke',
+                  entityType: 'Enrollment',
+                  entityId: payment.courseId!,
+                  meta: {
+                    source: 'refund',
+                    paymentId: payment.id,
+                    razorpayPaymentId,
+                    userId: payment.userId,
+                    refundAmount,
+                  },
+                },
+              })
+            );
+
+            console.log(`[Webhook] COURSE refund: enrollment revoked for user=${payment.userId} course=${payment.courseId}`);
+          } else {
+            // PLAN refund: revert user to FREE (existing behavior)
+            await withRetry(() =>
+              prisma.user.update({
+                where: { id: payment.userId },
+                data: { plan: 'FREE', planExpiresAt: null },
+              })
+            );
+            console.log(`[Webhook] PLAN refund: user=${payment.userId} reverted to FREE`);
+          }
+        } else {
+          // Partial refund: ignore but log (per spec)
+          console.log(`[Webhook] Partial refund ignored: payment=${payment.id} refund=${refundAmount} original=${payment.amount}`);
+        }
+      }
+    } catch (err) {
+      console.error('[Webhook] DB error processing refund event:', err);
       res.status(500).json({ error: 'Webhook processing failed — will retry' });
       return;
     }

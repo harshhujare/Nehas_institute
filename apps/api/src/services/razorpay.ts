@@ -23,6 +23,7 @@ export interface CreateOrderOptions {
   amount: number;   // paise
   currency?: string;
   receipt: string;
+  notes?: Record<string, string>;
 }
 
 export async function createRazorpayOrder(options: CreateOrderOptions) {
@@ -30,6 +31,7 @@ export async function createRazorpayOrder(options: CreateOrderOptions) {
     amount: options.amount,
     currency: options.currency || 'INR',
     receipt: options.receipt,
+    ...(options.notes ? { notes: options.notes } : {}),
   });
 }
 

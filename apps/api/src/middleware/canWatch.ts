@@ -1,4 +1,4 @@
-import { Role, Plan } from '@prisma/client';
+import { Role, Plan, VideoStatus } from '@prisma/client';
 import { prisma, withRetry } from '../lib/prisma';
 
 export type WatchAccessReason =
@@ -7,6 +7,8 @@ export type WatchAccessReason =
   | 'ALL_ACCESS_PLAN'
   | 'ENROLLED'
   | 'UNAUTHORIZED'
+  | 'PLAN_EXPIRED'
+  | 'ENROLLMENT_REVOKED'
   | 'PAYWALL';
 
 export interface CanWatchResult {
@@ -18,6 +20,7 @@ export interface CanWatchResult {
     videoId: string | null;
     durationSec: number | null;
     isFreePreview: boolean;
+    status: VideoStatus;
     section: {
       id: string;
       courseId: string;
@@ -56,6 +59,7 @@ export async function canWatchLecture(
         videoId: true,
         durationSec: true,
         isFreePreview: true,
+        status: true,
         section: {
           select: {
             id: true,
@@ -80,8 +84,9 @@ export async function canWatchLecture(
     return { allowed: false, reason: 'UNAUTHORIZED', lecture };
   }
 
-  // 3. Staff & Admins always have full curriculum access
-  const staffRoles: Role[] = ['SUPER_ADMIN', 'CONTENT_MANAGER', 'SUPPORT_MANAGER'];
+  // 3. Staff & Admins: only CONTENT_MANAGER and SUPER_ADMIN bypass (FR-P1, P13)
+  // SUPPORT_MANAGER must have an enrollment or plan like regular students.
+  const staffRoles: Role[] = ['SUPER_ADMIN', 'CONTENT_MANAGER'];
   if (staffRoles.includes(user.role)) {
     return { allowed: true, reason: 'STAFF', lecture };
   }
@@ -92,6 +97,7 @@ export async function canWatchLecture(
     if (isPlanActive) {
       return { allowed: true, reason: 'ALL_ACCESS_PLAN', lecture };
     }
+    // Plan expired — fall through to enrollment check, but note the reason
   }
 
   // 5. Course-specific Enrollment
@@ -105,17 +111,27 @@ export async function canWatchLecture(
       },
       select: {
         expiresAt: true,
+        revokedAt: true,
       },
     })
   );
 
   if (enrollment) {
+    // Revoked enrollment blocks access (refund or admin revoke)
+    if (enrollment.revokedAt) {
+      return { allowed: false, reason: 'ENROLLMENT_REVOKED', lecture };
+    }
     const isEnrollmentActive = !enrollment.expiresAt || new Date(enrollment.expiresAt) > new Date();
     if (isEnrollmentActive) {
       return { allowed: true, reason: 'ENROLLED', lecture };
     }
   }
 
-  // 6. Paywall
+  // 6. Check if plan was expired specifically
+  if (user.plan === 'PAID' && user.planExpiresAt && new Date(user.planExpiresAt) <= new Date()) {
+    return { allowed: false, reason: 'PLAN_EXPIRED', lecture };
+  }
+
+  // 7. Paywall
   return { allowed: false, reason: 'PAYWALL', lecture };
 }

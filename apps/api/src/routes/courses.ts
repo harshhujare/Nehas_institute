@@ -314,3 +314,71 @@ coursesRouter.get('/:id/progress', requireAuth(), async (req: Request, res: Resp
     },
   });
 });
+
+/**
+ * POST /api/courses/:id/enroll
+ * Free course enrollment — bypasses Razorpay (FR-P3).
+ * Razorpay cannot create zero-amount orders, so free courses use this endpoint.
+ * Idempotent: re-enrollment returns existing enrollment.
+ */
+coursesRouter.post('/:id/enroll', requireAuth(), async (req: Request, res: Response) => {
+  const courseId = String(req.params.id);
+
+  const course = await withRetry(() =>
+    prisma.course.findUnique({
+      where: { id: courseId },
+      select: { id: true, priceInPaise: true, isPublished: true, archivedAt: true },
+    })
+  );
+
+  if (!course || !course.isPublished || course.archivedAt) {
+    res.status(404).json({ error: 'Course not found or not available' });
+    return;
+  }
+
+  // Only free courses can use this endpoint
+  if (course.priceInPaise > 0) {
+    res.status(400).json({ error: 'This course requires payment. Use the purchase flow instead.' });
+    return;
+  }
+
+  // Idempotent: upsert — if already enrolled (even if revoked), reactivate
+  const enrollment = await withRetry(() =>
+    prisma.enrollment.upsert({
+      where: {
+        userId_courseId: { userId: req.user!.userId, courseId: course.id },
+      },
+      create: {
+        userId: req.user!.userId,
+        courseId: course.id,
+        source: 'FREE',
+      },
+      update: {
+        // Reactivate if previously revoked
+        revokedAt: null,
+        source: 'FREE',
+      },
+    })
+  );
+
+  // Audit log
+  await withRetry(() =>
+    prisma.auditLog.create({
+      data: {
+        action: 'enrollment.grant',
+        entityType: 'Enrollment',
+        entityId: enrollment.id,
+        actorId: req.user!.userId,
+        meta: { source: 'free', courseId: course.id },
+      },
+    })
+  );
+
+  res.status(201).json({
+    data: {
+      enrolled: true,
+      courseId: course.id,
+      enrollmentId: enrollment.id,
+    },
+  });
+});

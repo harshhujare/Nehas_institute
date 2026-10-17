@@ -8,6 +8,7 @@ export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED';
 
 export type VideoStatus = 'UPLOADING' | 'PROCESSING' | 'READY' | 'FAILED';
 export type CourseLevel = 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED';
+export type EnrollmentSource = 'PURCHASE' | 'FREE' | 'ADMIN_GRANT';
 
 // ─── Core Models ─────────────────────────────────────────────────────────────
 export interface User {
@@ -78,12 +79,15 @@ export interface CourseDetail extends CourseSummary {
 export interface PlaybackAuthResponse {
   embedUrl: string;
   expiresAt: number;
+  resumePositionSec: number;
   lecture: {
     id: string;
     title: string;
     durationSec: number;
     isFreePreview: boolean;
   };
+  next?: { id: string; title: string } | null;
+  prev?: { id: string; title: string } | null;
 }
 
 export interface LectureProgress {
@@ -92,6 +96,16 @@ export interface LectureProgress {
   positionSec: number;
   completed: boolean;
   updatedAt: string;
+}
+
+export interface EnrollmentStatus {
+  id: string;
+  enrolled: boolean;
+  courseId: string;
+  source: EnrollmentSource;
+  revokedAt?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
 }
 
 export interface Subject {

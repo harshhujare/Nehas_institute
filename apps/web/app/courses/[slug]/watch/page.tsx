@@ -20,8 +20,10 @@ import {
   Sparkles, 
   X,
   Volume2,
-  AlertCircle
+  AlertCircle,
+  LifeBuoy
 } from 'lucide-react';
+import { apiClient } from '@/lib/api-client';
 
 interface Lesson {
   id: string;
@@ -107,10 +109,56 @@ export default function CourseWatchPage() {
   const canAccessCurrent = currentLesson.isFreePreview || isUserEntitled;
 
   // Retrieve signed embed URL from backend
-  const { data: playData, isLoading: isPlayLoading } = useLecturePlay(
+  const { data: playData, isLoading: isPlayLoading, error: playError } = useLecturePlay(
     currentLesson?.id,
     isPlaying && canAccessCurrent
   );
+
+  // Playback issue report modal states (FR-S8)
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportIssueType, setReportIssueType] = useState('Video does not play / black screen');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [reportSuccessMsg, setReportSuccessMsg] = useState<string | null>(null);
+
+  const handleReportIssue = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) {
+      alert('Please log in to report a playback issue.');
+      return;
+    }
+    try {
+      setIsSubmittingReport(true);
+      const diagnostics = [
+        `Issue Type: ${reportIssueType}`,
+        `Details: ${reportDetails || 'N/A'}`,
+        `Course: ${course?.title || slug} (ID: ${course?.id || 'unknown'})`,
+        `Lesson: ${currentLesson.title} (ID: ${currentLesson.id})`,
+        `Play State: isPlaying=${isPlaying}, hasEmbedUrl=${Boolean(playData?.embedUrl)}`,
+        `Error Details: ${playError ? JSON.stringify((playError as any)?.response?.data || playError.message) : 'None'}`,
+        `User Agent: ${typeof window !== 'undefined' ? window.navigator.userAgent : 'N/A'}`,
+        `Resolution: ${typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'N/A'}`,
+        `Timestamp: ${new Date().toISOString()}`,
+      ].join('\n');
+
+      await apiClient.post('/api/support', {
+        type: 'BUG_REPORT',
+        subject: `Playback Issue: ${currentLesson.title.slice(0, 45)}`,
+        message: diagnostics,
+      });
+
+      setReportSuccessMsg('Diagnostics submitted! Our chef technical team has received the playback report.');
+      setTimeout(() => {
+        setIsReportModalOpen(false);
+        setReportSuccessMsg(null);
+        setReportDetails('');
+      }, 2500);
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to submit report. Please try again.');
+    } finally {
+      setIsSubmittingReport(false);
+    }
+  };
 
   const handleSelectLesson = (lesson: Lesson) => {
     if (!lesson.isFreePreview && !isUserEntitled) {
@@ -163,6 +211,21 @@ export default function CourseWatchPage() {
                     allowFullScreen
                     title={currentLesson.title}
                   />
+                </div>
+              ) : playError ? (
+                <div className="absolute inset-0 w-full h-full bg-stone-950 flex flex-col items-center justify-center p-6 text-center z-10">
+                  <AlertCircle size={32} className="text-amber-500 mb-2" />
+                  <h3 className="text-sm font-semibold text-stone-200">Playback Unavailable</h3>
+                  <p className="text-xs text-stone-400 mt-1 max-w-sm">
+                    {(playError as any)?.response?.data?.error || 'Unable to authorize secure video stream.'}
+                  </p>
+                  <button
+                    onClick={() => setIsReportModalOpen(true)}
+                    className="mt-3 px-3 py-1.5 rounded-lg bg-stone-800 hover:bg-stone-700 text-stone-300 text-xs font-medium inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <LifeBuoy size={14} className="text-amber-500" />
+                    Report Issue
+                  </button>
                 </div>
               ) : isPlayLoading ? (
                 <div className="absolute inset-0 w-full h-full bg-stone-950 flex flex-col items-center justify-center text-amber-500 z-10">
@@ -250,13 +313,24 @@ export default function CourseWatchPage() {
                 Taught by Chef Neha Ma&apos;am • HD 1080p Stream • Free Preview
               </p>
             </div>
-            <button 
-              onClick={() => toggleLessonCompleted(currentLesson.id)}
-              className={`mark-done-btn ${completedLessonIds.includes(currentLesson.id) ? 'mark-done-btn--completed' : ''}`}
-            >
-              <CheckCircle2 size={16} />
-              <span>{completedLessonIds.includes(currentLesson.id) ? 'Completed' : 'Mark as Done'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsReportModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-stone-700 bg-stone-900 text-stone-300 hover:text-white hover:bg-stone-800 text-xs font-medium transition cursor-pointer"
+                title="Report a playback problem with automatic diagnostics"
+              >
+                <LifeBuoy size={14} className="text-amber-500" />
+                <span>Report Issue</span>
+              </button>
+              <button 
+                onClick={() => toggleLessonCompleted(currentLesson.id)}
+                className={`mark-done-btn ${completedLessonIds.includes(currentLesson.id) ? 'mark-done-btn--completed' : ''}`}
+              >
+                <CheckCircle2 size={16} />
+                <span>{completedLessonIds.includes(currentLesson.id) ? 'Completed' : 'Mark as Done'}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -462,6 +536,90 @@ export default function CourseWatchPage() {
                 Continue Watching Preview
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Report Playback Problem Modal (FR-S8) ── */}
+      {isReportModalOpen && (
+        <div className="modal-backdrop">
+          <div className="locked-modal-card max-w-md w-full bg-stone-900 border border-stone-800 p-6 rounded-2xl shadow-2xl text-stone-100">
+            <div className="flex items-center justify-between border-b border-stone-800 pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <LifeBuoy size={20} className="text-amber-500" />
+                <h3 className="text-base font-bold text-white">Report Playback Problem</h3>
+              </div>
+              <button 
+                onClick={() => setIsReportModalOpen(false)}
+                className="text-stone-400 hover:text-stone-200"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {reportSuccessMsg ? (
+              <div className="py-6 text-center space-y-2">
+                <CheckCircle2 size={36} className="mx-auto text-emerald-500" />
+                <p className="text-sm font-semibold text-white">{reportSuccessMsg}</p>
+                <p className="text-xs text-stone-400">Our engineering team has received your ticket.</p>
+              </div>
+            ) : (
+              <form onSubmit={handleReportIssue} className="space-y-4 text-xs">
+                <div>
+                  <label className="block text-stone-300 font-semibold mb-1">
+                    What is the issue? *
+                  </label>
+                  <select
+                    value={reportIssueType}
+                    onChange={(e) => setReportIssueType(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-stone-800 border border-stone-700 text-stone-200 focus:outline-hidden focus:border-amber-500 text-xs"
+                  >
+                    <option value="Video does not play / black screen">Video does not play / black screen</option>
+                    <option value="Endless buffering / slow loading">Endless buffering / slow loading</option>
+                    <option value="Audio is missing or out of sync">Audio is missing or out of sync</option>
+                    <option value="Error code displayed">Error code displayed</option>
+                    <option value="Other streaming problem">Other streaming problem</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-stone-300 font-semibold mb-1">
+                    Additional notes (optional)
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="e.g. video stopped at 02:45, spinning wheel keeps showing..."
+                    value={reportDetails}
+                    onChange={(e) => setReportDetails(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-stone-800 border border-stone-700 text-stone-200 focus:outline-hidden focus:border-amber-500 text-xs"
+                  />
+                </div>
+
+                <div className="p-3 bg-stone-950/70 rounded-xl border border-stone-800 text-[11px] text-stone-400 space-y-1 font-mono">
+                  <p className="font-semibold text-stone-300">Diagnostics Attached:</p>
+                  <p>• Lesson: {currentLesson.title.slice(0, 35)}...</p>
+                  <p>• Lesson ID: {currentLesson.id}</p>
+                  <p>• Stream state: {playData?.embedUrl ? 'Authorized' : 'Pending'}</p>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-stone-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsReportModalOpen(false)}
+                    className="px-3.5 py-1.5 rounded-lg border border-stone-700 text-stone-400 hover:bg-stone-800"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReport}
+                    className="px-4 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium"
+                  >
+                    {isSubmittingReport ? 'Sending...' : 'Submit Report'}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
