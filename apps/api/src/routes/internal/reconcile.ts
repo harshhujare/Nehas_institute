@@ -34,6 +34,7 @@ reconcileRouter.post('/', async (req: Request, res: Response) => {
   const results = {
     repairedLectures: 0,
     repairedEnrollments: 0,
+    repairedPlans: 0,
     errors: [] as string[],
     timestamp: new Date().toISOString(),
   };
@@ -156,6 +157,65 @@ reconcileRouter.post('/', async (req: Request, res: Response) => {
           results.repairedEnrollments++;
         } catch (err: any) {
           results.errors.push(`Payment ${payment.id}: ${err.message}`);
+        }
+      }
+    }
+
+    // 3. Reconcile paid payments without active Plan (FR-Y2, Flaw 2)
+    const successfulPlanPayments = await withRetry(() =>
+      prisma.payment.findMany({
+        where: {
+          status: 'SUCCESS',
+          OR: [
+            { productType: 'PLAN' },
+            { courseId: null, planDuration: { not: null } },
+          ],
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              plan: true,
+              planExpiresAt: true,
+              paidAt: true,
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      })
+    );
+
+    for (const payment of successfulPlanPayments) {
+      const user = payment.user;
+      if (!user) continue;
+
+      const durationDays = payment.planDuration || 365;
+      const expectedExpiryMin = new Date(payment.createdAt.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+      // If user is currently FREE, or their plan expired before this payment's coverage period
+      const isMissingActivePlan =
+        user.plan !== 'PAID' ||
+        !user.planExpiresAt ||
+        new Date(user.planExpiresAt) < expectedExpiryMin;
+
+      // Only repair if the coverage period is still valid in the future
+      if (isMissingActivePlan && expectedExpiryMin > new Date()) {
+        try {
+          console.warn(`[Reconcile] Detected paid plan without activation: payment=${payment.id}, user=${payment.userId}`);
+          await withRetry(() =>
+            prisma.user.update({
+              where: { id: payment.userId },
+              data: {
+                plan: 'PAID',
+                planExpiresAt: expectedExpiryMin,
+                ...(user.paidAt == null && { paidAt: payment.createdAt }),
+              },
+            })
+          );
+          results.repairedPlans++;
+        } catch (err: any) {
+          results.errors.push(`Plan Payment ${payment.id}: ${err.message}`);
         }
       }
     }
