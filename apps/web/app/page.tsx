@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import useAuthStore from '@/lib/auth-store';
 import { useAnnouncements } from '@/hooks/useAnnouncements';
+import { useCourses } from '@/hooks/useCourses';
 import Slider from '@/components/ui/Slider';
 import { 
   ChefHat, 
@@ -131,6 +132,8 @@ const TESTIMONIALS = [
 export default function Home() {
   const { user, isInitialized } = useAuthStore();
   const { data: announcements, isLoading: loadingAnnouncements } = useAnnouncements();
+  const { data: coursesData, isLoading: loadingCourses } = useCourses({ limit: 3 });
+  const liveCourses = coursesData?.data || [];
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -303,52 +306,74 @@ export default function Home() {
             <p className="section-subheading">Included with your Chef&apos;s All-Access Pass. Start streaming in minutes.</p>
           </div>
 
-          <div className="courses-grid">
-            {FEATURED_COURSES.map((course) => (
-              <div key={course.id} className="course-card">
-                <div className="course-thumb" style={{ background: course.imageBg }}>
-                  <div className="course-thumb-overlay">
-                    <span className="course-badge">{course.badge}</span>
-                    <span className="course-rating">
-                      <Star size={13} className="text-amber-300 fill-amber-300" />
-                      {course.rating} ({course.students})
-                    </span>
-                  </div>
-                  <div className="course-play-center">
-                    <ChefHat size={36} className="text-white opacity-80" />
-                  </div>
-                </div>
+          {liveCourses.length > 0 ? (
+            <>
+              <div className="courses-grid">
+                {liveCourses.map((course) => (
+                  <div key={course.id} className="course-card">
+                    <div className="course-thumb" style={{ background: 'linear-gradient(135deg, #ea580c, #c2410c)' }}>
+                      <div className="course-thumb-overlay">
+                        <span className="course-badge">{course.priceInPaise === 0 ? 'Free Access' : 'Masterclass'}</span>
+                        <span className="course-rating">
+                          <Star size={13} className="text-amber-300 fill-amber-300" />
+                          4.95 (1.2k)
+                        </span>
+                      </div>
+                      <div className="course-play-center">
+                        <ChefHat size={36} className="text-white opacity-80" />
+                      </div>
+                    </div>
 
-                <div className="course-body">
-                  <span className="course-category">{course.category}</span>
-                  <h3 className="course-title">{course.title}</h3>
-                  <div className="course-meta-row">
-                    <span className="course-meta-item">
-                      <Clock size={14} className="inline mr-1 text-stone-500" />
-                      {course.duration}
-                    </span>
-                    <span className="course-meta-item">
-                      <BookOpen size={14} className="inline mr-1 text-stone-500" />
-                      {course.lessons} Lessons
-                    </span>
+                    <div className="course-body">
+                      <span className="course-category">{course.category}</span>
+                      <h3 className="course-title">{course.title}</h3>
+                      <div className="course-meta-row">
+                        <span className="course-meta-item">
+                          <Clock size={14} className="inline mr-1 text-stone-500" />
+                          {course.totalDurationSec ? `${Math.floor(course.totalDurationSec / 60)} Mins` : 'Self-Paced'}
+                        </span>
+                        <span className="course-meta-item">
+                          <BookOpen size={14} className="inline mr-1 text-stone-500" />
+                          {course.totalLectures || 0} Lessons
+                        </span>
+                      </div>
+                      <div className="course-footer">
+                        <span className="course-price-tag">{course.priceInPaise === 0 ? 'Free' : 'All-Access Pass'}</span>
+                        <Link href={`/courses/${course.slug}`} className="course-btn">
+                          View Syllabus →
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                  <div className="course-footer">
-                    <span className="course-price-tag">All-Access Pass</span>
-                    <Link href={`/courses/${course.slug}`} className="course-btn">
-                      View Syllabus →
-                    </Link>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
 
-          <div className="all-courses-cta">
-            <Link href="/courses" className="btn-secondary-lg">
-              <span>View All Masterclasses &amp; Syllabi</span>
-              <ArrowRight size={16} />
-            </Link>
-          </div>
+              <div className="all-courses-cta">
+                <Link href="/courses" className="btn-secondary-lg">
+                  <span>View All Masterclasses &amp; Syllabi</span>
+                  <ArrowRight size={16} />
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '3.5rem 1.5rem', background: '#ffffff', borderRadius: '18px', border: '1px solid rgba(120, 113, 108, 0.16)', maxWidth: '640px', margin: '0 auto', boxShadow: '0 4px 20px rgba(0,0,0,0.04)' }}>
+              <ChefHat size={46} className="text-amber-700 opacity-60 mb-2" style={{ margin: '0 auto 0.75rem', display: 'block' }} />
+              <h3 style={{ fontSize: '1.25rem', fontFamily: 'serif', color: '#1c1917', marginBottom: '0.6rem' }}>
+                New Culinary Masterclasses Coming Soon
+              </h3>
+              <p style={{ color: '#57534e', fontSize: '0.95rem', lineHeight: 1.55, marginBottom: '1.5rem' }}>
+                Chef Neha Ma&apos;am is recording new HD masterclass courses with authentic hotel-style techniques. Explore our 120+ printable Recipe Notes or secure your All-Access Pass today!
+              </p>
+              <div style={{ display: 'flex', gap: '0.85rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <Link href="/notes" className="btn-primary" style={{ padding: '0.65rem 1.35rem', fontSize: '0.88rem', borderRadius: '8px', textDecoration: 'none' }}>
+                  Browse Recipe Notes
+                </Link>
+                <Link href="/pricing" className="btn-secondary" style={{ padding: '0.65rem 1.35rem', fontSize: '0.88rem', borderRadius: '8px', textDecoration: 'none' }}>
+                  Explore All-Access Pass
+                </Link>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 

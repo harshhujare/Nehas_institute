@@ -169,34 +169,32 @@ export default function CoursesCatalogPage() {
 
   const liveCourses = liveCoursesData?.data;
 
-  // Adapt live courses or fallback to pre-rendered courses
-  const displayCourses = liveCourses && liveCourses.length > 0
-    ? liveCourses.map((c) => ({
-        id: c.id,
-        slug: c.slug,
-        title: c.title,
-        description: c.shortDescription || c.description,
-        category: c.category,
-        duration: formatDuration(c.totalDurationSec),
-        lessonsCount: c.totalLectures || 0,
-        rating: 4.95,
-        studentsCount: 1200 + c.order * 150,
-        level: c.level === 'BEGINNER' ? 'Beginner Friendly' : c.level === 'ADVANCED' ? 'Advanced Technique' : 'Intermediate',
-        badge: c.priceInPaise === 0 ? 'Free Access' : c.order === 1 ? 'Flagship Masterclass' : undefined,
-        hasFreePreview: true,
-        accentGradient: getCategoryGradient(c.category),
-        priceInPaise: c.priceInPaise,
-      }))
-    : COURSES.filter((course) => {
-        const matchesCategory = selectedCategory === 'All Tracks' || course.category === selectedCategory;
-        const matchesSearch =
-          course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          course.category.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
-      });
+  // Map live courses directly from database (no hardcoded fallback)
+  const displayCourses = (liveCourses || []).map((c) => ({
+    id: c.id,
+    slug: c.slug,
+    title: c.title,
+    description: c.shortDescription || c.description,
+    category: c.category as any,
+    duration: formatDuration(c.totalDurationSec),
+    lessonsCount: c.totalLectures || 0,
+    rating: 4.95,
+    studentsCount: 1200 + (c.order || 0) * 150,
+    level: (c.level === 'BEGINNER' ? 'Beginner Friendly' : c.level === 'ADVANCED' ? 'Advanced Technique' : 'Intermediate') as any,
+    badge: c.priceInPaise === 0 ? 'Free Access' : c.order === 1 ? 'Flagship Masterclass' : undefined,
+    hasFreePreview: true,
+    accentGradient: getCategoryGradient(c.category),
+    priceInPaise: c.priceInPaise,
+  }));
 
-  const filteredCourses = displayCourses;
+  const filteredCourses = displayCourses.filter((course) => {
+    const matchesCategory = selectedCategory === 'All Tracks' || course.category === selectedCategory;
+    const matchesSearch =
+      course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      course.category.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
   return (
     <div className="courses-page">
@@ -280,19 +278,42 @@ export default function CoursesCatalogPage() {
             </span>
           </div>
 
-          {filteredCourses.length === 0 ? (
+          {isLoading ? (
+            <div className="empty-catalog-state">
+              <ChefHat size={48} className="text-amber-700 opacity-60 mb-2 animate-bounce" />
+              <h3 className="empty-title">Loading masterclasses...</h3>
+              <p className="empty-desc">Fetching the latest culinary tracks from Chef Neha Ma&apos;am.</p>
+            </div>
+          ) : filteredCourses.length === 0 ? (
             <div className="empty-catalog-state">
               <ChefHat size={48} className="text-amber-700 opacity-60 mb-2" />
-              <h3 className="empty-title">No masterclasses found</h3>
+              <h3 className="empty-title">
+                {searchQuery || selectedCategory !== 'All Tracks'
+                  ? 'No masterclasses found'
+                  : 'No Masterclasses Published Yet'}
+              </h3>
               <p className="empty-desc">
-                We couldn&apos;t find anything matching &ldquo;{searchQuery}&rdquo;. Try another keyword or browse all tracks.
+                {searchQuery || selectedCategory !== 'All Tracks'
+                  ? `We couldn't find anything matching "${searchQuery}". Try another keyword or reset filters.`
+                  : "New comprehensive video masterclasses taught by Chef Neha Ma'am are in preparation. Check back soon or explore our Recipe Notes in the meantime!"}
               </p>
-              <button 
-                onClick={() => { setSearchQuery(''); setSelectedCategory('All Tracks'); }} 
-                className="reset-filters-btn"
-              >
-                Reset All Filters
-              </button>
+              {searchQuery || selectedCategory !== 'All Tracks' ? (
+                <button
+                  onClick={() => { setSearchQuery(''); setSelectedCategory('All Tracks'); }}
+                  className="reset-filters-btn"
+                >
+                  Reset All Filters
+                </button>
+              ) : (
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', marginTop: '1rem', flexWrap: 'wrap' }}>
+                  <Link href="/notes" className="banner-btn" style={{ textDecoration: 'none' }}>
+                    Browse Recipe Notes
+                  </Link>
+                  <Link href="/pricing" className="banner-btn" style={{ background: '#78350f', textDecoration: 'none' }}>
+                    All-Access Pass
+                  </Link>
+                </div>
+              )}
             </div>
           ) : (
             <div className="courses-grid">

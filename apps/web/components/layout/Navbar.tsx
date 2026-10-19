@@ -62,6 +62,7 @@ export default function Navbar() {
           {/* Desktop nav links */}
           <div className="navbar-links" role="list">
             <Link href="/" className="navbar-link" role="listitem">Home</Link>
+            <Link href="/courses" className="navbar-link" role="listitem">Courses</Link>
             <Link href="/notes" className="navbar-link" role="listitem">Recipe Notes</Link>
             <Link href="/pricing" className="navbar-link" role="listitem" style={{ color: 'var(--accent)', fontWeight: 600 }}>All-Access Pass</Link>
             <Link href="/help" className="navbar-link" role="listitem">Help</Link>

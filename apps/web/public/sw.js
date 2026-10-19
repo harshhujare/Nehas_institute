@@ -1,11 +1,16 @@
 // Neha's Institute — Minimal Service Worker
 // Version: bump SHELL_VERSION when deploying new Next.js build to force cache refresh
-const SHELL_VERSION = 'v6';
+const SHELL_VERSION = 'v7';
 const SHELL_CACHE = `neha-shell-${SHELL_VERSION}`;
 const OFFLINE_CACHE = 'neha-offline-v2';
 
+// ─── Localhost dev guard ──────────────────────────────────────────────────────
+const isLocalhost =
+  typeof self !== 'undefined' &&
+  (self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1');
+
 // ─── App shell pages to pre-cache on install ─────────────────────────────────
-const SHELL_PAGES = ['/', '/notes', '/plans', '/account', '/help', '/offline.html'];
+const SHELL_PAGES = isLocalhost ? [] : ['/', '/notes', '/plans', '/account', '/help', '/offline.html'];
 
 // ─── Install: cache offline fallback and shell pages immediately ───────────────
 self.addEventListener('install', (event) => {
@@ -39,6 +44,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  if (isLocalhost) return;
 
   // 1. CRITICAL: Never intercept or cache ANY /api/* endpoints or Bunny Stream / CDN domains
   const isBunny =

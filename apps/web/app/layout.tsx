@@ -65,9 +65,8 @@ export default function RootLayout({
         <link rel="offline" href="/offline.html" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/icon-512.png" />
-        <Script
+        <script
           id="theme-script"
-          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               try {
@@ -87,7 +86,7 @@ export default function RootLayout({
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  var swUrl = ${process.env.NEXT_PUBLIC_DISABLE_SW === 'true' ? "'/sw-kill.js'" : "'/sw.js'"};
+                  var swUrl = ${process.env.NEXT_PUBLIC_DISABLE_SW === 'true' || process.env.NODE_ENV === 'development' ? "'/sw-kill.js'" : "'/sw.js'"};
                   navigator.serviceWorker.register(swUrl)
                     .catch(function() { /* SW registration failed */ });
                 });

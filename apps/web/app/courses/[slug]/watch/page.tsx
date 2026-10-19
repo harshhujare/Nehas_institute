@@ -36,26 +36,11 @@ interface Lesson {
   completed?: boolean;
 }
 
-const LESSONS: readonly Lesson[] = [
-  { id: 'l1', number: 1, title: 'Introduction: Deconstructing Commercial vs Home Gravies', duration: '14:20', isFreePreview: true, completed: true },
-  { id: 'l2', number: 2, title: 'Whole Spice Blooming & Temperature Management', duration: '18:45', isFreePreview: false },
-  { id: 'l3', number: 3, title: 'Onion Chemistry: Slice, Paste, or Fried Birista?', duration: '22:10', isFreePreview: false },
-  { id: 'l4', number: 4, title: 'The Silk Makhani (Red) Base: Emulsification & Kasuri Methi', duration: '28:15', isFreePreview: true },
-  { id: 'l5', number: 5, title: 'The Royal Shahi (White) Cashew Base: Velvety texture without curdling', duration: '24:30', isFreePreview: false },
-  { id: 'l6', number: 6, title: 'The Deep Bhuna (Brown) Onion-Tomato Base: Authentic rogan release', duration: '26:40', isFreePreview: false },
-  { id: 'l7', number: 7, title: 'Paneer Butter Masala & Shahi Paneer Assembly', duration: '21:05', isFreePreview: false },
-  { id: 'l8', number: 8, title: 'Malai Kofta: Soft melt-in-mouth dumplings that never disintegrate', duration: '25:50', isFreePreview: false },
-  { id: 'l9', number: 9, title: 'Veg Kolhapuri & Spicy Maharashtrian Tambda/Pandhra Rassa adaptation', duration: '22:15', isFreePreview: false },
-  { id: 'l10', number: 10, title: 'Freezer Batching: 30-Day Storage & Reheating Protocol', duration: '16:30', isFreePreview: false },
-  { id: 'l11', number: 11, title: 'Troubleshooting: Overly sour tomatoes, split cream, and spice fixes', duration: '15:10', isFreePreview: false },
-  { id: 'l12', number: 12, title: 'Course Wrap-up, Q&A and Certificate Requirements', duration: '12:00', isFreePreview: false },
-] as const;
-
 type WatchTab = 'lessons' | 'recipe' | 'qa';
 
 export default function CourseWatchPage() {
   const params = useParams();
-  const slug = (params?.slug as string) || 'mastering-restaurant-style-indian-gravies';
+  const slug = (params?.slug as string) || '';
   const { user } = useAuthStore();
 
   const { data: course, isLoading: isCourseLoading } = useCourse(slug);
@@ -70,22 +55,22 @@ export default function CourseWatchPage() {
         id: lec.id,
         number: n++,
         title: lec.title,
-        duration: `${Math.floor(lec.durationSec / 60)}:${String(lec.durationSec % 60).padStart(2, '0')}`,
-        durationSec: lec.durationSec,
+        duration: `${Math.floor((lec.durationSec || 0) / 60)}:${String((lec.durationSec || 0) % 60).padStart(2, '0')}`,
+        durationSec: lec.durationSec || 0,
         isFreePreview: lec.isFreePreview,
         completed: course.userProgress?.completedLectureIds?.includes(lec.id) || false,
       }))
     );
   }, [course]);
 
-  const activeLessons = liveLessons || LESSONS;
+  const activeLessons = liveLessons || [];
 
-  const [activeLessonId, setActiveLessonId] = useState<string>('l1');
+  const [activeLessonId, setActiveLessonId] = useState<string>('');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeed, setPlaybackSpeed] = useState<string>('1x');
   const [activeTab, setActiveTab] = useState<WatchTab>('lessons');
   const [showLockedModal, setShowLockedModal] = useState<boolean>(false);
-  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>(['l1']);
+  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
 
   // Sync initial lesson when live course loads
   useEffect(() => {
@@ -106,13 +91,13 @@ export default function CourseWatchPage() {
   const isActivePaid = isPaid && !isExpired;
   const isUserEntitled = isActivePaid || Boolean(course?.isEnrolled) || user?.role !== 'STUDENT';
 
-  const currentLesson = activeLessons.find((l) => l.id === activeLessonId) || activeLessons[0];
-  const canAccessCurrent = currentLesson.isFreePreview || isUserEntitled;
+  const currentLesson = activeLessons.find((l) => l.id === activeLessonId) || activeLessons[0] || null;
+  const canAccessCurrent = currentLesson ? (currentLesson.isFreePreview || isUserEntitled) : false;
 
-  // Retrieve signed embed URL from backend
+  // Retrieve signed embed URL from backend only for valid real lectures
   const { data: playData, isLoading: isPlayLoading, error: playError } = useLecturePlay(
     currentLesson?.id,
-    isPlaying && canAccessCurrent
+    Boolean(currentLesson?.id && isPlaying && canAccessCurrent)
   );
 
   // Playback issue report modal states (FR-S8)
@@ -210,7 +195,8 @@ export default function CourseWatchPage() {
                     className="w-full h-full border-0 absolute inset-0"
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                     allowFullScreen
-                    title={currentLesson.title}
+                    referrerPolicy="no-referrer"
+                    title={currentLesson?.title || 'Lesson Video'}
                   />
                 </div>
               ) : playError ? (
@@ -255,7 +241,7 @@ export default function CourseWatchPage() {
               {/* Player Top Meta */}
               <div className="player-top-meta">
                 <span className="player-badge">
-                  Lesson {currentLesson.number} of {activeLessons.length}
+                  Lesson {currentLesson?.number || 1} of {activeLessons.length || 1}
                 </span>
                 <span className="speed-badge">Speed: {playbackSpeed}</span>
               </div>
@@ -263,7 +249,7 @@ export default function CourseWatchPage() {
               {/* Player Bottom Control Bar */}
               <div className="player-controls-bar">
                 <div className="progress-bar-wrap">
-                  <div className="progress-bar-filled" style={{ width: '42%' }} />
+                  <div className="progress-bar-filled" style={{ width: '0%' }} />
                 </div>
                 <div className="controls-row">
                   <div className="controls-left">
@@ -280,7 +266,7 @@ export default function CourseWatchPage() {
                     <button className="control-btn" title="Forward 10s">
                       <RotateCw size={16} />
                     </button>
-                    <span className="video-time">05:42 / {currentLesson.duration}</span>
+                    <span className="video-time">00:00 / {currentLesson?.duration || '0:00'}</span>
                   </div>
                   <div className="controls-right">
                     <button 
@@ -308,30 +294,32 @@ export default function CourseWatchPage() {
           {/* Lesson Title & Completion Action */}
           <div className="lesson-meta-card">
             <div className="lesson-meta-main">
-              <span className="lesson-track-tag">Regional Indian Curries</span>
-              <h1 className="active-lesson-heading">{currentLesson.title}</h1>
+              <span className="lesson-track-tag">{course?.category || 'Culinary Masterclass'}</span>
+              <h1 className="active-lesson-heading">{currentLesson?.title || (isCourseLoading ? 'Loading lesson...' : 'No lesson selected')}</h1>
               <p className="lesson-subtext">
-                Taught by Chef Neha Ma&apos;am • HD 1080p Stream • Free Preview
+                Taught by Chef Neha Ma&apos;am • HD 1080p Stream {currentLesson?.isFreePreview ? '• Free Preview' : ''}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsReportModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-stone-700 bg-stone-900 text-stone-300 hover:text-white hover:bg-stone-800 text-xs font-medium transition cursor-pointer"
-                title="Report a playback problem with automatic diagnostics"
-              >
-                <LifeBuoy size={14} className="text-amber-500" />
-                <span>Report Issue</span>
-              </button>
-              <button 
-                onClick={() => toggleLessonCompleted(currentLesson.id)}
-                className={`mark-done-btn ${completedLessonIds.includes(currentLesson.id) ? 'mark-done-btn--completed' : ''}`}
-              >
-                <CheckCircle2 size={16} />
-                <span>{completedLessonIds.includes(currentLesson.id) ? 'Completed' : 'Mark as Done'}</span>
-              </button>
-            </div>
+            {currentLesson && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsReportModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-stone-700 bg-stone-900 text-stone-300 hover:text-white hover:bg-stone-800 text-xs font-medium transition cursor-pointer"
+                  title="Report a playback problem with automatic diagnostics"
+                >
+                  <LifeBuoy size={14} className="text-amber-500" />
+                  <span>Report Issue</span>
+                </button>
+                <button 
+                  onClick={() => toggleLessonCompleted(currentLesson.id)}
+                  className={`mark-done-btn ${completedLessonIds.includes(currentLesson.id) ? 'mark-done-btn--completed' : ''}`}
+                >
+                  <CheckCircle2 size={16} />
+                  <span>{completedLessonIds.includes(currentLesson.id) ? 'Completed' : 'Mark as Done'}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -343,7 +331,7 @@ export default function CourseWatchPage() {
               className={`watch-tab-btn ${activeTab === 'lessons' ? 'watch-tab-btn--active' : ''}`}
             >
               <BookOpen size={16} />
-              <span>Lessons ({LESSONS.length})</span>
+              <span>Lessons ({activeLessons.length})</span>
             </button>
             <button
               onClick={() => setActiveTab('recipe')}
@@ -380,7 +368,12 @@ export default function CourseWatchPage() {
               </div>
 
               <div className="lessons-items-list">
-                {activeLessons.map((l) => {
+                {activeLessons.length === 0 ? (
+                  <div style={{ padding: '2rem 1rem', textAlign: 'center', color: '#a8a29e', fontSize: '0.85rem' }}>
+                    {isCourseLoading ? 'Loading curriculum…' : 'No lessons published for this course yet.'}
+                  </div>
+                ) : (
+                  activeLessons.map((l) => {
                   const isActive = l.id === activeLessonId;
                   const isCompleted = completedLessonIds.includes(l.id);
                   const isLocked = !l.isFreePreview && !isUserEntitled;
@@ -420,7 +413,8 @@ export default function CourseWatchPage() {
                       )}
                     </button>
                   );
-                })}
+                })
+              )}
               </div>
             </div>
           )}
