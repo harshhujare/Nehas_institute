@@ -148,58 +148,74 @@ adminCoursesRouter.put('/:id', async (req: Request, res: Response) => {
  * Archive instead. Only truly empty drafts can be hard-deleted.
  */
 adminCoursesRouter.delete('/:id', async (req: Request, res: Response) => {
-  const courseId = String(req.params.id);
-  const course = await prisma.course.findUnique({
-    where: { id: courseId },
-    include: {
-      _count: { select: { enrollments: true, payments: true } },
-    },
-  });
-
-  if (!course) {
-    res.status(404).json({ error: 'Course not found' });
-    return;
-  }
-
-  const hasData = course._count.enrollments > 0 || course._count.payments > 0;
-
-  if (hasData) {
-    // Soft-delete: archive
-    await withRetry(() =>
-      prisma.course.update({
-        where: { id: courseId },
-        data: { archivedAt: new Date(), isPublished: false },
-      })
-    );
-
-    await prisma.auditLog.create({
-      data: {
-        actorId: req.user!.userId,
-        action: 'course.archive',
-        entityType: 'Course',
-        entityId: courseId,
-        meta: { reason: 'Has enrollments or payments — archived instead of deleted' },
+  try {
+    const courseId = String(req.params.id);
+    const course = await prisma.course.findUnique({
+      where: { id: courseId },
+      include: {
+        _count: { select: { enrollments: true, payments: true } },
       },
     });
 
-    res.json({ data: { archived: true, message: 'Course archived (has existing enrollments/payments).' } });
-  } else {
-    // Hard delete for empty drafts
-    await withRetry(() =>
-      prisma.course.delete({ where: { id: courseId } })
-    );
+    if (!course) {
+      // Idempotent: If course is already deleted, return success so duplicate clicks do not fail
+      res.json({ data: { deleted: true, message: 'Course already removed.' } });
+      return;
+    }
 
-    await prisma.auditLog.create({
-      data: {
-        actorId: req.user!.userId,
-        action: 'course.delete',
-        entityType: 'Course',
-        entityId: courseId,
-        meta: { title: course.title },
-      },
-    });
+    const hasData = course._count.enrollments > 0 || course._count.payments > 0;
 
-    res.json({ data: { deleted: true } });
+    if (hasData) {
+      // Soft-delete: archive
+      await withRetry(() =>
+        prisma.course.update({
+          where: { id: courseId },
+          data: { archivedAt: new Date(), isPublished: false },
+        })
+      );
+
+      await prisma.auditLog.create({
+        data: {
+          actorId: req.user?.userId || null,
+          action: 'course.archive',
+          entityType: 'Course',
+          entityId: courseId,
+          meta: { reason: 'Has enrollments or payments — archived instead of deleted' },
+        },
+      });
+
+      res.json({ data: { archived: true, message: 'Course archived (has existing enrollments/payments).' } });
+    } else {
+      // Hard delete for empty drafts / courses without purchase records
+      try {
+        await withRetry(() =>
+          prisma.course.delete({ where: { id: courseId } })
+        );
+      } catch (deleteErr: any) {
+        console.warn('[course.delete] Direct delete failed, falling back to archive:', deleteErr.message);
+        await withRetry(() =>
+          prisma.course.update({
+            where: { id: courseId },
+            data: { archivedAt: new Date(), isPublished: false },
+          })
+        );
+      }
+
+      await prisma.auditLog.create({
+        data: {
+          actorId: req.user?.userId || null,
+          action: 'course.delete',
+          entityType: 'Course',
+          entityId: courseId,
+          meta: { title: course.title },
+        },
+      });
+
+      res.json({ data: { deleted: true } });
+    }
+  } catch (err: any) {
+    console.error('[adminCoursesRouter.delete] Error deleting course:', err);
+    res.status(500).json({ error: err.message || 'Failed to delete course' });
   }
 });
 

@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@source "../**/*.{js,ts,jsx,tsx,mdx}";
 
 /* ── Theme tokens — Neha's Culinary Institute ──────────────────────────────────
    Tailored warm culinary design system: Terracotta, Turmeric Gold & Cream.

@@ -102,6 +102,35 @@ app.get('/api/ping', (_req, res) => {
   res.status(200).json({ ok: true });
 });
 
+// ─── Mock TUS Upload handler (Local Dev) ─────────────────────────────────────────
+app.post('/api/mock/tusupload', (_req, res) => {
+  res.set({
+    'Tus-Resumable': '1.0.0',
+    'Location': 'http://localhost:4000/api/mock/tusupload/file-mock-123',
+    'Upload-Offset': '0',
+    'Access-Control-Expose-Headers': 'Location, Tus-Resumable, Upload-Offset',
+  });
+  res.status(201).end();
+});
+app.patch('/api/mock/tusupload/:id', (req, res) => {
+  const uploadLength = req.headers['upload-length'] || '1048576';
+  res.set({
+    'Tus-Resumable': '1.0.0',
+    'Upload-Offset': String(uploadLength),
+    'Access-Control-Expose-Headers': 'Tus-Resumable, Upload-Offset',
+  });
+  res.status(204).end();
+});
+app.head('/api/mock/tusupload/:id', (_req, res) => {
+  res.set({
+    'Tus-Resumable': '1.0.0',
+    'Upload-Offset': '1048576',
+    'Upload-Length': '1048576',
+    'Access-Control-Expose-Headers': 'Tus-Resumable, Upload-Offset, Upload-Length',
+  });
+  res.status(200).end();
+});
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 app.use('/api/auth', authRouter);
 app.use('/api/notes', notesRouter);
