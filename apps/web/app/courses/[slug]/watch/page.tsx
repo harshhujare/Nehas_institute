@@ -195,7 +195,7 @@ export default function CourseWatchPage() {
                     className="w-full h-full border-0 absolute inset-0"
                     allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
                     allowFullScreen
-                    referrerPolicy="no-referrer"
+                    referrerPolicy="strict-origin-when-cross-origin"
                     title={currentLesson?.title || 'Lesson Video'}
                   />
                 </div>
