@@ -126,31 +126,22 @@ reconcileRouter.post('/', async (req: Request, res: Response) => {
     for (const payment of successfulCoursePayments) {
       if (!payment.courseId) continue;
 
-      const hasActiveEnrollment = payment.user.enrollments.some(
-        (e) => e.courseId === payment.courseId && !e.revokedAt
+      // Only repair if NO enrollment record exists at all for this course.
+      // If an enrollment exists (even if revokedAt is set by an admin), do NOT un-revoke it.
+      const hasEnrollment = payment.user.enrollments.some(
+        (e) => e.courseId === payment.courseId
       );
 
-      if (!hasActiveEnrollment) {
+      if (!hasEnrollment) {
         try {
           console.warn(`[Reconcile] Detected paid order without enrollment: payment=${payment.id}, user=${payment.userId}, course=${payment.courseId}`);
           await withRetry(() =>
-            prisma.enrollment.upsert({
-              where: {
-                userId_courseId: {
-                  userId: payment.userId,
-                  courseId: payment.courseId!,
-                },
-              },
-              create: {
+            prisma.enrollment.create({
+              data: {
                 userId: payment.userId,
                 courseId: payment.courseId!,
                 paymentId: payment.id,
                 source: 'PURCHASE',
-              },
-              update: {
-                paymentId: payment.id,
-                source: 'PURCHASE',
-                revokedAt: null,
               },
             })
           );
