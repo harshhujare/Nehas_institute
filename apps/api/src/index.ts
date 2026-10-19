@@ -29,14 +29,28 @@ process.on('uncaughtException', (err) => {
 });
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-  'http://localhost:3001', // fallback when port 3000 is busy
-];
+const configuredOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map((s) => s.trim());
+
+const allowedOrigins = Array.from(new Set([
+  ...configuredOrigins,
+  'http://localhost:3000',
+  'http://localhost:3001',
+]));
+
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || allowedOrigins.includes(origin)) cb(null, true);
-    else cb(new Error(`CORS blocked: ${origin}`));
+    if (
+      !origin ||
+      allowedOrigins.includes(origin) ||
+      (origin.startsWith('http://localhost:')) ||
+      (origin.endsWith('.vercel.app'))
+    ) {
+      cb(null, true);
+    } else {
+      cb(new Error(`CORS blocked: ${origin}`));
+    }
   },
   credentials: true,
 }));
